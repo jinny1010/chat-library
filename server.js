@@ -5,223 +5,338 @@ const path = require('path');
 const url = require('url');
 
 const PORT = process.env.PORT || 7860;
-// 환경변수나 인자가 없으면 아래 경로들을 기본으로 탐색
 const DATA_ROOTS = (process.env.CHAT_LIBRARY_PATH || '').split(':').filter(Boolean);
 const HOME = process.env.HOME || '/data/data/com.termux/files/home';
-
-// 기본 탐색 경로 (SD카드 포함)
-const DEFAULT_SEARCH_PATHS = [
-    '/storage/0000-0000/Backup', // 👈 본인의 SD카드 경로로 수정 필요
-    path.join(HOME, 'storage/shared/ST-backup'),
-    path.join(HOME, 'ST-backup'),
-    '/sdcard/ST-backup',
-    path.join(HOME, 'SillyTavern/data/default-user'),
-];
-
-const TAGS_FILE = path.join(HOME, '.chat-library-file-tags.json'); // 파일명 변경 (구조가 바뀌어서)
+const TAGS_FILE = path.join(HOME, '.chat-library-tags.json');
 const SETTINGS_FILE = path.join(HOME, '.chat-library-settings.json');
 
 function loadJson(f) { try { if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f,'utf-8')); } catch(e){} return {}; }
 function saveJson(f,d) { try { fs.writeFileSync(f,JSON.stringify(d,null,2),'utf-8'); } catch(e){} }
 
-// ... (findDataRoot, scanAllData 등의 함수는 기존과 동일하므로 생략하거나 기존 코드 유지) ...
-// ※ scanChatsDir 함수에서 파일명 정보를 정확히 넘겨줘야 함 (이미 기존 코드에서 하고 있음)
-
-// ── 데이터 스캔 로직 (기존 유지하되 태그 매핑 방식 변경을 위해 구조 확인) ──
+// ── 경로 탐색 ──
+// 핵심: readdirSync + statSync 사용 (symlink 따라감)
+// Termux ~/storage/XXXX-XXXX 는 심볼릭 링크이므로 withFileTypes 쓰면 안됨
 function findDataRoot() {
-    if (DATA_ROOTS.length > 0) return DATA_ROOTS;
-    const found = [];
-    // 1순위 강제 지정 경로 (SD카드)
-    const sdBackup = '/storage/0000-0000/Backup'; // 👈 여기도 확인
-    if(fs.existsSync(sdBackup)) found.push(sdBackup);
+    if (DATA_ROOTS.length > 0) {
+        console.log('  환경변수 경로 사용:');
+        for (const r of DATA_ROOTS) console.log(`    📂 ${r}`);
+        return DATA_ROOTS;
+    }
+    const found = ['/storage/0000-0000/Backup'];
 
-    // 나머지 경로 탐색
-    for (const p of DEFAULT_SEARCH_PATHS) {
-        if (fs.existsSync(p) && !found.includes(p)) found.push(p);
+    // ── 1순위: ~/storage 아래 모든 폴더에서 Backup 찾기 ──
+    const storageBase = path.join(HOME, 'storage');
+    if (fs.existsSync(storageBase)) {
+        try {
+            // withFileTypes 안 씀! statSync가 symlink를 따라감
+            const names = fs.readdirSync(storageBase);
+            for (const name of names) {
+                const fullPath = path.join(storageBase, name);
+                try {
+                    // statSync는 symlink를 자동으로 따라감 (lstatSync와 다름)
+                    const stat = fs.statSync(fullPath);
+                    if (!stat.isDirectory()) continue;
+
+                    for (const bn of ['Backup', 'backup', 'ST-backup', 'st-backup']) {
+                        const bd = path.join(fullPath, bn);
+                        if (fs.existsSync(bd) && !found.includes(bd)) {
+                            // chats 폴더가 있는지 확인
+                            const hasChats = fs.existsSync(path.join(bd, 'chats'));
+                            console.log(`  ✓ 발견: ${bd}${hasChats ? ' (chats/ 있음)' : ''}`);
+                            found.push(bd);
+                        }
+                    }
+
+                    // ~/storage/XXXX/chats 가 직접 있는 경우
+                    const directChats = path.join(fullPath, 'chats');
+                    if (fs.existsSync(directChats) && !found.includes(fullPath)) {
+                        console.log(`  ✓ 발견: ${fullPath} (직접 chats/)`);
+                        found.push(fullPath);
+                    }
+                } catch (e) {
+                    // 접근 권한 없는 폴더 무시
+                    console.log(`  ⚠ 접근 불가: ${fullPath} (${e.code || e.message})`);
+                }
+            }
+        } catch (e) {
+            console.log(`  ⚠ ~/storage 읽기 실패: ${e.message}`);
+        }
+    }
+
+    // ── 2순위: 명시적 ST-backup 경로들 ──
+    const stPaths = [
+        path.join(HOME, 'ST-backup'),
+        path.join(HOME, 'st-backup'),
+        '/storage/emulated/0/ST-backup',
+        '/storage/emulated/0/Download/ST-backup',
+        '/sdcard/ST-backup',
+    ];
+    for (const p of stPaths) {
+        if (!fs.existsSync(p)) continue;
+        const bs = path.join(p, 'Backup');
+        const target = fs.existsSync(bs) ? bs : p;
+        if (!found.includes(target)) {
+            console.log(`  ✓ 발견: ${target}`);
+            found.push(target);
+        }
+    }
+
+    // ── 3순위 (최하위): SillyTavern 실서버 — 위에서 아무것도 못 찾았을 때만 ──
+    if (found.length === 0) {
+        const stServer = [
+            path.join(HOME, 'SillyTavern/data/default-user'),
+            path.join(HOME, 'sillytavern/data/default-user'),
+        ];
+        for (const p of stServer) {
+            if (fs.existsSync(p) && !found.includes(p)) {
+                console.log(`  ✓ ST 서버 (백업 없어서 폴백): ${p}`);
+                found.push(p);
+            }
+        }
+    }
+
+    if (found.length === 0) {
+        const dp = path.join(HOME, 'ST-backup');
+        fs.mkdirSync(path.join(dp, 'chats'), { recursive: true });
+        fs.mkdirSync(path.join(dp, 'images'), { recursive: true });
+        console.log(`  📁 기본 폴더 생성: ${dp}`);
+        found.push(dp);
     }
     return found;
 }
 
+// ── 유틸 ──
+function isDir(p) { try { return fs.statSync(p).isDirectory(); } catch(e) { return false; } }
+function sub(root, name) { const p = path.join(root, name); return fs.existsSync(p) ? p : null; }
+function safeReaddir(dir) { try { return fs.readdirSync(dir); } catch(e) { return []; } }
+
+// ── 스캔 ──
 function scanAllData(roots) {
     const characters = {};
-    const allImages = []; // 이미지 경로 매핑용
+    const allImages = [];
+    for (const root of roots) {
+        const chatsDir = sub(root, 'chats');
+        if (chatsDir) scanChatsDir(chatsDir, characters);
 
-    // 1. 재귀적으로 디렉토리 탐색 함수
-    const walk = (dir) => {
-        try {
-            const list = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of list) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    // chats 폴더인지 확인
-                    if (entry.name === 'chats') {
-                        scanChatsFolder(fullPath, characters);
-                    } else if (entry.name === 'images') {
-                        // 이미지 폴더 스캔 (파일명 -> 전체경로 매핑을 위해)
-                        scanImagesRecursive(fullPath, allImages);
-                    } else {
-                        walk(fullPath);
-                    }
+        const imagesDir = sub(root, 'images');
+        if (imagesDir) scanImagesDirByChar(imagesDir, allImages, characters);
+
+        // 아바타 소스들
+        for (const d of ['characters', 'thumbnails']) {
+            const dir = sub(root, d);
+            if (dir) scanAvatarDir(dir, characters);
+        }
+
+        const uImgDir = sub(root, 'user/images');
+        if (uImgDir) scanImagesDir(uImgDir, allImages, characters);
+
+        // chats/ 없이 직접 캐릭터 폴더가 있는 경우
+        if (!chatsDir) {
+            for (const name of safeReaddir(root)) {
+                const fp = path.join(root, name);
+                if (!isDir(fp) || ['images','thumbnails','characters','User Avatars'].includes(name)) continue;
+                if (safeReaddir(fp).some(f => f.endsWith('.jsonl'))) {
+                    scanChatsDir(root, characters);
+                    break;
                 }
             }
-        } catch(e) {}
-    };
+        }
+    }
 
-    for (const root of roots) walk(root);
+    // 2차 아바타: images/캐릭터명/ 첫 이미지
+    for (const root of roots) {
+        const imagesDir = sub(root, 'images');
+        if (!imagesDir) continue;
+        for (const name of safeReaddir(imagesDir)) {
+            const fp = path.join(imagesDir, name);
+            if (!isDir(fp)) continue;
+            if (characters[name] && !characters[name].avatar) {
+                const imgs = safeReaddir(fp).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+                if (imgs.length > 0) characters[name].avatar = path.join(fp, imgs[0]);
+            }
+        }
+    }
+
     return { characters, allImages };
 }
 
-function scanChatsFolder(chatsDir, characters) {
-    try {
-        const charDirs = fs.readdirSync(chatsDir, { withFileTypes: true });
-        for (const entry of charDirs) {
-            if (!entry.isDirectory()) continue;
-            const charName = entry.name;
-            if (!characters[charName]) characters[charName] = { chats: [], avatar: null };
-            
-            const charPath = path.join(chatsDir, charName);
-            const files = fs.readdirSync(charPath).filter(f => f.endsWith('.jsonl'));
-            
-            for (const file of files) {
-                const filePath = path.join(charPath, file);
-                const stat = fs.statSync(filePath);
-                characters[charName].chats.push({
-                    name: file.replace('.jsonl', ''),
-                    file: file, // 파일명 (확장자 포함)
-                    path: filePath,
-                    size: stat.size,
-                    modified: stat.mtime.toISOString(),
-                });
+function scanChatsDir(chatsDir, characters) {
+    for (const name of safeReaddir(chatsDir)) {
+        const cp = path.join(chatsDir, name);
+        if (!isDir(cp)) continue;
+        if (!characters[name]) characters[name] = { chats: [], avatar: null, images: [] };
+        for (const file of safeReaddir(cp).filter(f => f.endsWith('.jsonl'))) {
+            try {
+                const fp = path.join(cp, file);
+                const stat = fs.statSync(fp);
+                characters[name].chats.push({ name: file.replace('.jsonl', ''), file, path: fp, size: stat.size, modified: stat.mtime.toISOString() });
+            } catch(e) {}
+        }
+    }
+}
+
+function norm(s) {
+    return s.toLowerCase().replace(/[''"`]/g, '').replace(/\s+/g, '').replace(/[_\-\.]/g, '').replace(/[^a-z0-9가-힣ㄱ-ㅎㅏ-ㅣ]/g, '');
+}
+
+function scanAvatarDir(dir, characters) {
+    for (const name of safeReaddir(dir)) {
+        if (!/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) continue;
+        const fp = path.join(dir, name);
+        if (isDir(fp)) continue;
+        const base = name.replace(/\.(png|jpg|jpeg|webp|gif)$/i, '');
+        const bn = norm(base);
+        for (const cn of Object.keys(characters)) {
+            const cnn = norm(cn);
+            if (bn === cnn || (cnn.length >= 2 && bn.includes(cnn)) || (bn.length >= 2 && cnn.includes(bn))) {
+                if (!characters[cn].avatar) characters[cn].avatar = fp;
             }
         }
-    } catch(e) {}
+    }
 }
 
-function scanImagesRecursive(dir, allImages) {
-    try {
-        const files = fs.readdirSync(dir, { withFileTypes: true });
-        for (const f of files) {
-            const fp = path.join(dir, f.name);
-            if (f.isDirectory()) scanImagesRecursive(fp, allImages);
-            else if (/\.(png|jpg|webp|gif)$/i.test(f.name)) {
-                allImages.push({ name: f.name, path: fp });
+function scanImagesDirByChar(imagesDir, allImages, characters) {
+    for (const name of safeReaddir(imagesDir)) {
+        const fp = path.join(imagesDir, name);
+        if (isDir(fp)) {
+            if (!characters[name]) characters[name] = { chats: [], avatar: null, images: [] };
+            for (const f of safeReaddir(fp).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
+                const ip = path.join(fp, f);
+                allImages.push({ name: f, path: ip, char: name, dir: name });
+                if (!characters[name].images) characters[name].images = [];
+                characters[name].images.push({ name: f, path: ip });
+            }
+        } else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) {
+            allImages.push({ name, path: fp, char: '', dir: '' });
+        }
+    }
+}
+
+function scanImagesDir(imgDir, allImages, characters) {
+    const walk = (dir, prefix) => {
+        for (const name of safeReaddir(dir)) {
+            const fp = path.join(dir, name);
+            if (isDir(fp)) { walk(fp, prefix ? `${prefix}/${name}` : name); }
+            else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) {
+                allImages.push({ name, path: fp, dir: prefix || '' });
+                const base = name.replace(/\.(png|jpg|jpeg|webp|gif)$/i, '');
+                const bn = norm(base);
+                for (const cn of Object.keys(characters)) {
+                    const cnn = norm(cn);
+                    if (bn === cnn || (bn.includes(cnn) && cnn.length >= 2) || (cnn.includes(bn) && bn.length >= 2)) {
+                        if (!characters[cn].avatar) characters[cn].avatar = fp;
+                    }
+                }
             }
         }
-    } catch(e) {}
+    };
+    walk(imgDir, '');
 }
 
-// ── 채팅 파싱 (이미지 정보 extra 포함) ──
-function parseChatFile(filePath) {
-    try {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        return content.trim().split('\n').map(line => {
-            try { return JSON.parse(line.trim()); } catch (e) { return null; }
-        }).filter(Boolean);
-    } catch(e) { return []; }
+// ── 채팅 파싱 & 정규식 ──
+function parseChatFile(fp) {
+    return fs.readFileSync(fp, 'utf-8').trim().split('\n').map(l => { try { return JSON.parse(l.trim()); } catch(e) { return null; } }).filter(Boolean);
 }
 
-const server = http.createServer(async (req, res) => {
-    const parsed = url.parse(req.url, true);
-    const pathname = parsed.pathname;
-    
-    // CORS & Headers
+const CLEANUP = [
+    { f: /(?:```?\w*[\r\n]?)?<(thought|cot|thinking|CoT|think|starter)[\s\S]*?<\/(thought|cot|thinking|CoT|think|starter)>(?:[\r\n]?```?)?/gi, r: '' },
+    { f: /<pic>[\s\S]*?<\/pic>/gi, r: '' },
+    { f: /<imageInfo>[\s\S]*?<\/imageInfo>/gi, r: '' },
+    { f: /<pic\s+prompt="[^"]*"\s*>/gi, r: '' },
+    { f: /<\/pic>/gi, r: '' },
+    { f: /➛/g, r: '' },
+    { f: /🥨 Sex Position[\s\S]*?(?=```)/g, r: '' },
+    { f: /\[OOC:[\s\S]*?\]/gi, r: '' },
+    { f: /<OOC>[\s\S]*?<\/OOC>/gi, r: '' },
+    { f: /<extra_prompt>[\s\S]*?<\/extra_prompt>/gi, r: '' },
+];
+function clean(t) { if (!t) return ''; let c = t; for (const r of CLEANUP) c = c.replace(r.f, r.r); return c.replace(/\n{3,}/g, '\n\n').trim(); }
+
+// ── HTTP ──
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml' };
+function serve(fp, res) { try { const d = fs.readFileSync(fp); res.writeHead(200, { 'Content-Type': MIME[path.extname(fp).toLowerCase()] || 'application/octet-stream' }); res.end(d); } catch(e) { res.writeHead(404); res.end('Not Found'); } }
+function json(res, d) { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(d)); }
+function body(req) { return new Promise(r => { let b = ''; req.on('data', c => b += c); req.on('end', () => r(b)); }); }
+
+// ── 메인 ──
+console.log('\n  📚 Chat Library\n  ─────────────────\n  경로 탐색 중...\n');
+const dataRoots = findDataRoot();
+console.log(`\n  총 ${dataRoots.length}개 경로 사용\n`);
+
+http.createServer(async (req, res) => {
+    const p = url.parse(req.url, true), pn = p.pathname;
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') { res.end(); return; }
+    if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
-    // API: 스캔
-    if (pathname === '/api/scan') {
-        const roots = findDataRoot();
-        const { characters, allImages } = scanAllData(roots);
-        const tags = loadJson(TAGS_FILE); // { CharName: { FileName: [tags] } }
-
-        // 응답 데이터 구성
-        const charList = {};
-        for (const [name, data] of Object.entries(characters)) {
-            charList[name] = {
-                chats: data.chats.map(c => ({
-                    ...c,
-                    // 해당 캐릭터의 해당 파일에 대한 태그 가져오기
-                    tags: (tags[name] && tags[name][c.file]) ? tags[name][c.file] : [] 
-                })),
-                imageCount: 0 
+    if (pn === '/api/scan') {
+        const { characters, allImages } = scanAllData(dataRoots);
+        const tags = loadJson(TAGS_FILE);
+        const cl = {};
+        for (const [n, d] of Object.entries(characters)) {
+            cl[n] = {
+                chatCount: d.chats.length,
+                imageCount: (d.images || []).length,
+                avatar: d.avatar ? `/api/image?path=${encodeURIComponent(d.avatar)}` : null,
+                tags: tags[n] || [],
+                chats: d.chats.map(c => ({ name: c.name, file: c.file, size: c.size, modified: c.modified })),
             };
         }
-        
-        // 이미지 맵 (파일명 -> 경로)
-        const imageMap = {};
-        for(const img of allImages) imageMap[img.name] = img.path;
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ characters: charList, imageMap }));
+        json(res, { characters: cl, imageCount: allImages.length, roots: dataRoots });
         return;
     }
 
-    // API: 채팅 내용 로드
-    if (pathname === '/api/chat') {
-        const charName = parsed.query.char;
-        const fileName = parsed.query.file;
-        const roots = findDataRoot();
-        const { characters } = scanAllData(roots);
-        
-        if (!characters[charName]) return res.end('{}');
-        const chat = characters[charName].chats.find(c => c.file === fileName);
-        if (!chat) return res.end('{}');
-
-        const messages = parseChatFile(chat.path);
-        // 클라이언트에 그대로 전달 (extra 포함)
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ messages }));
+    if (pn === '/api/chat') {
+        const cn = p.query.char, fn = p.query.file;
+        if (!cn || !fn) { json(res, { error: 'need char+file' }); return; }
+        const { characters } = scanAllData(dataRoots);
+        const cd = characters[cn]; if (!cd) { json(res, { error: 'not found' }); return; }
+        const chat = cd.chats.find(c => c.file === fn); if (!chat) { json(res, { error: 'no file' }); return; }
+        const msgs = parseChatFile(chat.path).map(m => ({
+            name: m.name || (m.is_user ? 'User' : cn), is_user: !!m.is_user,
+            mes: clean(m.mes || ''), send_date: m.send_date || m.create_date || '',
+            extra: m.extra ? { image: m.extra.image || null, title: m.extra.title || null } : null,
+            swipe_id: m.swipe_id, swipes: m.swipes ? m.swipes.length : 0,
+        }));
+        json(res, { char: cn, file: chat.file, name: chat.name, messages: msgs, avatar: cd.avatar ? `/api/image?path=${encodeURIComponent(cd.avatar)}` : null });
         return;
     }
 
-    // API: 태그 저장
-    if (pathname === '/api/tags') {
-        if (req.method === 'POST') {
-            let body = '';
-            req.on('data', c => body += c);
-            req.on('end', () => {
-                const data = JSON.parse(body); // { char, file, tags }
-                const allTags = loadJson(TAGS_FILE);
-                
-                if (!allTags[data.char]) allTags[data.char] = {};
-                allTags[data.char][data.file] = data.tags;
-                
-                saveJson(TAGS_FILE, allTags);
-                res.end(JSON.stringify({ ok: true }));
-            });
-        }
+    if (pn === '/api/images') {
+        const { allImages } = scanAllData(dataRoots);
+        const cf = p.query.char;
+        let fl = allImages;
+        if (cf) fl = allImages.filter(i => (i.dir || '').toLowerCase().includes(cf.toLowerCase()) || i.name.toLowerCase().includes(cf.toLowerCase()));
+        const folders = {};
+        for (const i of fl) { const d = i.dir || '기타'; if (!folders[d]) folders[d] = []; folders[d].push({ name: i.name, dir: i.dir, url: `/api/image?path=${encodeURIComponent(i.path)}` }); }
+        json(res, { images: fl.map(i => ({ name: i.name, dir: i.dir, url: `/api/image?path=${encodeURIComponent(i.path)}` })), folders });
         return;
     }
 
-    // API: 이미지 서빙
-    if (pathname === '/api/image') {
-        const imgPath = parsed.query.path;
-        if (fs.existsSync(imgPath)) {
-            fs.createReadStream(imgPath).pipe(res);
-        } else {
-            res.writeHead(404); res.end();
-        }
-        return;
+    if (pn === '/api/image') {
+        const ip = p.query.path; if (!ip) { res.writeHead(400); res.end(); return; }
+        const rp = path.resolve(ip);
+        if (!dataRoots.some(r => rp.startsWith(path.resolve(r))) && !rp.startsWith(HOME)) { res.writeHead(403); res.end(); return; }
+        serve(rp, res); return;
     }
 
-    // 정적 파일 (index.html 등)
-    let filePath = pathname === '/' ? '/index.html' : pathname;
-    filePath = path.join(__dirname, 'public', filePath);
-    if (fs.existsSync(filePath)) {
-        fs.createReadStream(filePath).pipe(res);
-    } else {
-        // Fallback to index if checking subpaths or SPA
-        const idx = path.join(__dirname, 'public', 'index.html');
-        if(fs.existsSync(idx)) fs.createReadStream(idx).pipe(res);
-        else res.end('Not Found');
+    if (pn === '/api/tags') {
+        if (req.method === 'GET') { json(res, loadJson(TAGS_FILE)); return; }
+        if (req.method === 'POST') { try { saveJson(TAGS_FILE, JSON.parse(await body(req))); json(res, { ok: true }); } catch(e) { res.writeHead(400); json(res, { error: 'bad' }); } return; }
     }
-});
+    if (pn === '/api/settings') {
+        if (req.method === 'GET') { json(res, loadJson(SETTINGS_FILE)); return; }
+        if (req.method === 'POST') { try { const d = JSON.parse(await body(req)), c = loadJson(SETTINGS_FILE); Object.assign(c, d); saveJson(SETTINGS_FILE, c); json(res, { ok: true }); } catch(e) { res.writeHead(400); json(res, { error: 'bad' }); } return; }
+    }
+    if (pn === '/api/roots') { json(res, { roots: dataRoots }); return; }
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`서버 실행됨: http://localhost:${PORT}`);
-    console.log(`탐색 경로 확인 중...`);
-    const roots = findDataRoot();
-    roots.forEach(r => console.log(`  📂 ${r}`));
+    let fp = pn === '/' ? '/index.html' : pn;
+    fp = path.join(__dirname, 'public', fp);
+    if (fs.existsSync(fp) && fs.statSync(fp).isFile()) serve(fp, res);
+    else serve(path.join(__dirname, 'public', 'index.html'), res);
+}).listen(PORT, '0.0.0.0', () => {
+    console.log(`  🌐 http://localhost:${PORT}`);
+    for (const r of dataRoots) console.log(`  📂 ${r}`);
+    console.log('\n  💡 경로가 다르면: CHAT_LIBRARY_PATH=/sdcard/경로 node server.js\n');
 });
