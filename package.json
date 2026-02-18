@@ -1,0 +1,11 @@
+{
+  "name": "chat-library",
+  "version": "1.0.0",
+  "description": "SillyTavern 채팅 백업 도서관 뷰어",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT"
+}

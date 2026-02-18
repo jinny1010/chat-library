@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Chat Library — 채팅 도서관</title>
+<style>
+/* ============================================================
+   Chat Library — SillyTavern Backup Viewer
+   Styled after macRetro UI light theme by @Junezz
+   ============================================================ */
+
+/* Fonts */
+@font-face {
+  font-family: 'RIDIBatang';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/RIDIBatang.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpoqaHanSans';
+  font-weight: 400;
+  src: url('https://cdn.jsdelivr.net/gh/spoqa/spoqa-han-sans@01ff0283e4f36e159ffbf744b36e16ef742da6d8/Subset/SpoqaHanSans/SpoqaHanSansRegular.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'ChangwonDangam';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2511-1@1.0/ChangwonDangamRound-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-display: swap;
+}
+
+/* Reset */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --text: rgba(27, 28, 30, 1);
+  --text-dim: rgba(107, 107, 107, 1);
+  --border: rgba(27, 28, 30, 1);
+  --accent: rgba(27, 28, 30, 1);
+  --accent-overlay: rgba(27, 28, 30, 0.05);
+  --shadow: 2px 2px 0px rgba(27, 28, 30, 1);
+  --shadow-soft: 2px 2px 0px rgba(27, 28, 30, 0.15);
+  --red: #ce3636;
+  --font-body: 'RIDIBatang', 'SpoqaHanSans', serif;
+  --font-display: 'ChangwonDangam', 'SpoqaHanSans', sans-serif;
+  --font-size: 13.5px;
+  --line-height: 1.85;
+  --radius: 0px;
+  --scrollbar-w: 3px;
+  --topbar-h: 52px;
+}
+
+html { font-size: var(--font-size); }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: var(--line-height);
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: var(--radius); }
+
+/* ===== LAYOUT ===== */
+#app {
+  display: grid;
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-columns: 280px 1fr;
+  height: 100dvh;
+  width: 100%;
+}
+
+/* TOP BAR */
+#topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  z-index: 100;
+}
+
+#topbar h1 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: normal;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+#topbar h1 .accent { color: var(--text-dim); font-size: 0.85em; margin-left: 6px; }
+
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Buttons */
+.btn {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--accent-overlay); }
+.btn:active { box-shadow: 1px 1px 0px var(--border); transform: translate(1px,1px); }
+.btn.primary { background: var(--text); color: var(--surface); }
+.btn.primary:hover { background: rgba(27,28,30,0.85); }
+.btn.danger { color: var(--red); border-color: var(--red); }
+.btn.danger:hover { background: rgba(206,54,54,0.05); }
+.btn.small { padding: 3px 10px; font-size: 0.8rem; box-shadow: var(--shadow-soft); }
+
+/* SIDEBAR */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-section { padding: 12px; }
+.sidebar-section + .sidebar-section { border-top: 1px solid rgba(27,28,30,0.1); }
+
+.sidebar-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  padding-left: 3px;
+  position: relative;
+}
+
+.sidebar-title::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  background: var(--accent);
+}
+
+/* Character list */
+.char-list { list-style: none; }
+.char-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  margin-bottom: 2px;
+}
+.char-item:hover { background: var(--accent-overlay); border-color: var(--border); box-shadow: var(--shadow-soft); }
+.char-item.active { background: var(--accent-overlay); border-color: var(--border); box-shadow: var(--shadow); }
+
+.char-avatar {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--accent-overlay);
+}
+
+.char-info { min-width: 0; flex: 1; }
+.char-name { font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.char-meta { font-size: 0.72rem; color: var(--text-dim); }
+
+.chat-count {
+  font-size: 0.7rem;
+  background: var(--accent-overlay);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  box-shadow: var(--shadow-soft);
+  flex-shrink: 0;
+}
+
+/* Search */
+.search-box {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  outline: none;
+}
+.search-box:focus { border-color: var(--text); }
+.search-box::placeholder { color: var(--text-dim); }
+
+/* MAIN AREA */
+#main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Chat list (when viewing a character's chats) */
+#chat-list-panel {
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.chat-list-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.chat-list-header h2 { font-size: 1rem; font-weight: 600; }
+
+.chat-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.chat-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.chat-entry:hover { box-shadow: var(--shadow); background: var(--accent-overlay); }
+
+.chat-entry-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.chat-entry-info { flex: 1; min-width: 0; }
+.chat-entry-name { font-weight: 600; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-entry-date { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+.chat-entry-preview { font-size: 0.78rem; color: var(--text-dim); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px; }
+
+.chat-entry-msgs {
+  font-size: 0.7rem;
+  background: var(--accent-overlay);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+/* CHAT VIEWER */
+#chat-viewer {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-viewer-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.chat-viewer-header h2 { font-size: 0.95rem; font-weight: 600; flex: 1; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* Message bubbles — macRetro style */
+.message {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.mes-avatar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 4px 14px;
+  background: var(--accent-overlay);
+  border-bottom: 1px solid rgba(27,28,30,0.08);
+}
+.message.user .mes-avatar-wrapper { flex-direction: row-reverse; }
+
+.mes-avatar {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg);
+}
+
+.mes-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  flex: 1;
+}
+.message.user .mes-name { text-align: right; }
+
+.mes-time {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.mes-body {
+  padding: 10px 16px 14px 16px;
+  font-size: 0.88rem;
+  line-height: var(--line-height);
+}
+
+.mes-body p { margin-bottom: 10px; }
+.mes-body p:last-child { margin-bottom: 0; }
+
+/* Italic text (narration) */
+.mes-body em { color: var(--text-dim); }
+
+/* Quote text */
+.mes-body blockquote {
+  background: var(--accent-overlay);
+  border-left: 2px solid var(--accent);
+  padding: 8px;
+  margin: 6px 0;
+}
+
+/* Images in messages */
+.mes-image-container {
+  padding: 0 16px 10px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.mes-image {
+  max-width: 45%;
+  max-height: 400px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.mes-image:hover { opacity: 0.9; }
+
+/* Swipe indicator */
+.mes-swipe-info {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 2px 0 6px 0;
+}
+
+/* WELCOME / DROP ZONE */
+#welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.welcome-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.welcome-desc {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  max-width: 420px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  padding: 32px 48px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface);
+  max-width: 500px;
+  width: 100%;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  background: var(--accent-overlay);
+  border-color: var(--text);
+  box-shadow: var(--shadow);
+}
+.drop-zone-text { font-size: 0.85rem; color: var(--text-dim); }
+.drop-zone-text strong { color: var(--text); }
+
+/* IMAGE GALLERY */
+#gallery-panel {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.gallery-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.gallery-header h2 { font-size: 1rem; font-weight: 600; flex: 1; }
+
+.gallery-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.gallery-item {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: all 0.12s;
+  overflow: hidden;
+}
+.gallery-item:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+
+.gallery-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--bg);
+}
+
+.gallery-item-info {
+  padding: 6px 8px;
+  border-top: 1px solid rgba(27,28,30,0.1);
+}
+.gallery-item-name {
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+/* LIGHTBOX */
+.lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.lightbox.open { display: flex; }
+.lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+}
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 1.8rem;
+  color: white;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.lightbox-close:hover { opacity: 1; }
+
+/* STATS BAR */
+.stats-bar {
+  padding: 8px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  display: flex;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  gap: 8px;
+}
+.empty-state-icon { font-size: 2rem; opacity: 0.5; }
+
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-dim);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--accent-overlay);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Sidebar toggle for mobile */
+.sidebar-toggle {
+  display: none;
+  font-size: 1.2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  padding: 4px;
+}
+
+/* Tab buttons */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.tab-btn {
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--text); background: var(--accent-overlay); }
+.tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Settings hint */
+.hint-text {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 8px 0;
+  line-height: 1.5;
+}
+
+/* Path display */
+.path-display {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--accent-overlay);
+  padding: 6px 10px;
+  border: 1px solid rgba(27,28,30,0.1);
+  margin: 8px 0;
+  word-break: break-all;
+  font-family: monospace;
+}
+
+/* MOBILE */
+@media (max-width: 700px) {
+  #app {
+    grid-template-columns: 1fr;
+  }
+  #sidebar {
+    position: fixed;
+    left: -280px;
+    top: var(--topbar-h);
+    bottom: 0;
+    width: 280px;
+    z-index: 200;
+    transition: left 0.25s ease;
+    box-shadow: none;
+  }
+  #sidebar.open {
+    left: 0;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  }
+  .sidebar-toggle { display: block; }
+  .mes-image { max-width: 80%; }
+  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 199;
+  }
+  .mobile-overlay.show { display: block; }
+}
+
+/* TOAST */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 10000; }
+.toast {
+  padding: 8px 16px;
+  background: var(--text);
+  color: var(--surface);
+  font-family: inherit;
+  font-size: 0.8rem;
+  box-shadow: var(--shadow);
+  margin-top: 6px;
+  animation: toastIn 0.3s ease;
+}
+.toast.error { background: var(--red); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="메뉴">☰</button>
+    <h1>Chat Library<span class="accent">채팅 도서관</span></h1>
+    <div class="topbar-actions">
+      <button class="btn small" onclick="showGallery()">🖼 갤러리</button>
+      <button class="btn small primary" onclick="triggerFileInput()">＋ 파일 추가</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-section">
+      <input type="text" class="search-box" placeholder="캐릭터 검색..." oninput="filterCharacters(this.value)">
+    </div>
+    <div class="sidebar-section" style="flex:1; overflow-y:auto; padding-top:4px;">
+      <div class="sidebar-title">캐릭터 목록</div>
+      <ul class="char-list" id="charList">
+        <!-- dynamically filled -->
+      </ul>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">통계</div>
+      <div id="sidebarStats" class="hint-text">파일을 불러와 주세요</div>
+    </div>
+  </nav>
+
+  <!-- MOBILE OVERLAY -->
+  <div class="mobile-overlay" id="mobileOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- MAIN CONTENT -->
+  <main id="main">
+    <!-- Welcome / Drop Zone -->
+    <div id="welcome">
+      <div class="welcome-icon">📚</div>
+      <div class="welcome-title">채팅 도서관</div>
+      <div class="welcome-desc">
+        백업한 SillyTavern 채팅 파일(.jsonl)과 이미지를 불러와서<br>
+        도서관처럼 열람할 수 있어요.
+      </div>
+      <div class="drop-zone" id="dropZone"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event)"
+           onclick="triggerFileInput()">
+        <div class="drop-zone-text">
+          <strong>파일/폴더를 여기에 드래그</strong><br>
+          또는 클릭해서 선택<br><br>
+          <span style="font-size:0.78rem">.jsonl (채팅) · .png .jpg .webp (이미지)</span>
+        </div>
+      </div>
+      <div class="hint-text" style="margin-top:12px; max-width:420px;">
+        💡 Termux에서 백업한 chats 폴더와 user/images 폴더를 통째로 넣으면<br>
+        캐릭터별로 자동 정리됩니다. SD카드에 있어도 OK!
+      </div>
+    </div>
+
+    <!-- Chat List Panel -->
+    <div id="chat-list-panel">
+      <div class="chat-list-header">
+        <button class="btn small" onclick="goHome()">← 돌아가기</button>
+        <h2 id="chatListTitle">채팅 목록</h2>
+      </div>
+      <div class="chat-entries" id="chatEntries"></div>
+    </div>
+
+    <!-- Chat Viewer -->
+    <div id="chat-viewer">
+      <div class="chat-viewer-header">
+        <button class="btn small" onclick="goBackToList()">← 목록으로</button>
+        <h2 id="chatViewerTitle">채팅</h2>
+        <span class="mes-time" id="chatViewerDate"></span>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="stats-bar" id="chatStats"></div>
+    </div>
+
+    <!-- Gallery Panel -->
+    <div id="gallery-panel">
+      <div class="gallery-header">
+        <button class="btn small" onclick="goHome()">← 돌아가기</button>
+        <h2>🖼 이미지 갤러리</h2>
+        <span class="mes-time" id="galleryCount"></span>
+      </div>
+      <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="fileInput" multiple accept=".jsonl,.json,.png,.jpg,.jpeg,.webp,.gif" style="display:none" onchange="handleFileSelect(event)">
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close">&times;</span>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===================================================================
+// STATE
+// ===================================================================
+const state = {
+  characters: {},   // { charName: { avatar: blobUrl, chats: [ { name, date, messages, file } ] } }
+  images: {},       // { filename: blobUrl }
+  imageList: [],    // [ { name, url } ]
+  currentChar: null,
+  currentChat: null,
+};
+
+// ===================================================================
+// FILE HANDLING
+// ===================================================================
+function triggerFileInput() {
+  document.getElementById('fileInput').click();
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+async function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+
+  const items = e.dataTransfer.items;
+  if (!items) return;
+
+  const files = [];
+  const promises = [];
+
+  for (const item of items) {
+    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry) {
+      promises.push(traverseEntry(entry, files));
+    }
+  }
+
+  await Promise.all(promises);
+  if (files.length === 0) {
+    // Fallback for flat file drop
+    for (const f of e.dataTransfer.files) files.push(f);
+  }
+  processFiles(files);
+}
+
+function traverseEntry(entry, files) {
+  return new Promise((resolve) => {
+    if (entry.isFile) {
+      entry.file(f => { files.push(f); resolve(); });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      reader.readEntries(async (entries) => {
+        for (const e of entries) {
+          await traverseEntry(e, files);
+        }
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+}
+
+function handleFileSelect(e) {
+  processFiles(Array.from(e.target.files));
+  e.target.value = '';
+}
+
+async function processFiles(files) {
+  let chatCount = 0, imgCount = 0;
+
+  for (const file of files) {
+    const name = file.name.toLowerCase();
+
+    if (name.endsWith('.jsonl')) {
+      await parseChatFile(file);
+      chatCount++;
+    } else if (name.endsWith('.json') && !name.includes('settings') && !name.includes('theme')) {
+      // Possibly a chat file saved as .json
+      await parseChatFile(file);
+      chatCount++;
+    } else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) {
+      const url = URL.createObjectURL(file);
+      state.images[file.name] = url;
+      state.imageList.push({ name: file.name, url });
+
+      // Check if it's a character avatar (matches char name pattern)
+      for (const charName of Object.keys(state.characters)) {
+        if (file.name.toLowerCase().includes(charName.toLowerCase().replace(/[^a-z0-9가-힣]/gi, ''))) {
+          // Could be avatar — only set if none yet
+          if (!state.characters[charName].avatar) {
+            state.characters[charName].avatar = url;
+          }
+        }
+      }
+      imgCount++;
+    }
+  }
+
+  renderSidebar();
+  updateStats();
+
+  if (chatCount > 0 || imgCount > 0) {
+    toast(`${chatCount}개 채팅 · ${imgCount}개 이미지 로드 완료`);
+  }
+
+  // Hide welcome if we have data
+  if (Object.keys(state.characters).length > 0) {
+    document.getElementById('welcome').style.display = 'none';
+  }
+}
+
+async function parseChatFile(file) {
+  const text = await file.text();
+  const lines = text.trim().split('\n');
+  if (lines.length === 0) return;
+
+  const messages = [];
+  let chatName = file.name.replace(/\.jsonl?$/, '');
+  let charName = '';
+  let chatDate = '';
+
+  for (const line of lines) {
+    try {
+      const msg = JSON.parse(line.trim());
+
+      // First message often has chat metadata
+      if (!charName && msg.name && !msg.is_user) {
+        charName = msg.name;
+      }
+      if (!charName && msg.character_name) {
+        charName = msg.character_name;
+      }
+
+      // Extract character name from file path pattern
+      // SillyTavern saves chats like: charname/2024-1-1@12h34m56s.jsonl
+      if (!charName) {
+        const pathMatch = file.webkitRelativePath || '';
+        const parts = pathMatch.split('/');
+        if (parts.length >= 2) {
+          charName = parts[parts.length - 2];
+        }
+      }
+
+      if (msg.send_date) {
+        if (!chatDate) chatDate = msg.send_date;
+      }
+      if (msg.create_date) {
+        if (!chatDate) chatDate = msg.create_date;
+      }
+
+      messages.push({
+        name: msg.name || (msg.is_user ? '사용자' : charName || '???'),
+        is_user: !!msg.is_user,
+        mes: msg.mes || '',
+        send_date: msg.send_date || msg.create_date || '',
+        extra: msg.extra || {},
+        swipe_id: msg.swipe_id,
+        swipes: msg.swipes,
+        gen_started: msg.gen_started,
+        gen_finished: msg.gen_finished,
+      });
+    } catch (e) {
+      // Skip unparseable lines
+    }
+  }
+
+  if (messages.length === 0) return;
+
+  // Determine character name from file naming convention
+  if (!charName) {
+    // Try filename pattern: "Character Name - chatname.jsonl"
+    const dashIdx = chatName.indexOf(' - ');
+    if (dashIdx > 0) {
+      charName = chatName.substring(0, dashIdx);
+    } else {
+      charName = chatName;
+    }
+  }
+
+  // Clean up character name
+  charName = charName.replace(/\.png$/i, '');
+
+  if (!state.characters[charName]) {
+    state.characters[charName] = { avatar: null, chats: [] };
+  }
+
+  state.characters[charName].chats.push({
+    name: chatName,
+    date: chatDate,
+    messages: messages,
+    file: file.name,
+    msgCount: messages.length,
+  });
+}
+
+// ===================================================================
+// RENDERING
+// ===================================================================
+function renderSidebar() {
+  const list = document.getElementById('charList');
+  const chars = Object.entries(state.characters).sort((a, b) => {
+    // Sort by total messages descending
+    const aTotal = a[1].chats.reduce((s, c) => s + c.messages.length, 0);
+    const bTotal = b[1].chats.reduce((s, c) => s + c.messages.length, 0);
+    return bTotal - aTotal;
+  });
+
+  list.innerHTML = chars.map(([name, data]) => {
+    const chatCount = data.chats.length;
+    const avatarHtml = data.avatar
+      ? `<img class="char-avatar" src="${data.avatar}" alt="">`
+      : `<div class="char-avatar" style="display:flex;align-items:center;justify-content:center;font-size:1.1rem;">${name.charAt(0)}</div>`;
+
+    return `
+      <li class="char-item ${state.currentChar === name ? 'active' : ''}"
+          onclick="selectCharacter('${escHtml(name)}')"
+          data-name="${escHtml(name.toLowerCase())}">
+        ${avatarHtml}
+        <div class="char-info">
+          <div class="char-name">${escHtml(name)}</div>
+          <div class="char-meta">${chatCount}개 채팅</div>
+        </div>
+        <span class="chat-count">${data.chats.reduce((s, c) => s + c.messages.length, 0)}</span>
+      </li>
+    `;
+  }).join('');
+}
+
+function filterCharacters(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.char-item').forEach(el => {
+    const name = el.dataset.name || '';
+    el.style.display = name.includes(q) ? '' : 'none';
+  });
+}
+
+function selectCharacter(name) {
+  state.currentChar = name;
+  state.currentChat = null;
+  renderSidebar();
+
+  const data = state.characters[name];
+  if (!data) return;
+
+  // Show chat list
+  hideAllPanels();
+  const panel = document.getElementById('chat-list-panel');
+  panel.style.display = 'flex';
+
+  document.getElementById('chatListTitle').textContent = name + ' — 채팅 목록';
+
+  const entries = document.getElementById('chatEntries');
+  const sorted = [...data.chats].sort((a, b) => {
+    // Sort by date descending
+    return (b.date || '').localeCompare(a.date || '');
+  });
+
+  entries.innerHTML = sorted.map((chat, idx) => {
+    const preview = chat.messages.length > 1 ? chat.messages[1].mes.substring(0, 100) : '';
+    const dateStr = chat.date ? formatDate(chat.date) : '날짜 불명';
+
+    return `
+      <div class="chat-entry" onclick="openChat('${escHtml(name)}', ${data.chats.indexOf(chat)})">
+        <div class="chat-entry-icon">💬</div>
+        <div class="chat-entry-info">
+          <div class="chat-entry-name">${escHtml(chat.name)}</div>
+          <div class="chat-entry-date">${dateStr}</div>
+          ${preview ? `<div class="chat-entry-preview">${escHtml(preview)}</div>` : ''}
+        </div>
+        <span class="chat-entry-msgs">${chat.msgCount}턴</span>
+      </div>
+    `;
+  }).join('');
+
+  // Close sidebar on mobile
+  closeSidebarMobile();
+}
+
+function openChat(charName, chatIdx) {
+  const data = state.characters[charName];
+  if (!data || !data.chats[chatIdx]) return;
+
+  state.currentChat = chatIdx;
+  const chat = data.chats[chatIdx];
+
+  hideAllPanels();
+  const viewer = document.getElementById('chat-viewer');
+  viewer.style.display = 'flex';
+
+  document.getElementById('chatViewerTitle').textContent = charName;
+  document.getElementById('chatViewerDate').textContent = chat.date ? formatDate(chat.date) : '';
+
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = '';
+
+  let totalTokens = 0;
+  let userMsgs = 0, botMsgs = 0;
+
+  for (const msg of chat.messages) {
+    const el = createMessageElement(msg, data.avatar);
+    container.appendChild(el);
+    if (msg.is_user) userMsgs++; else botMsgs++;
+  }
+
+  document.getElementById('chatStats').textContent =
+    `총 ${chat.messages.length}턴 · 사용자 ${userMsgs} · AI ${botMsgs}`;
+
+  // Scroll to top
+  container.scrollTop = 0;
+}
+
+function createMessageElement(msg, charAvatar) {
+  const div = document.createElement('div');
+  div.className = `message ${msg.is_user ? 'user' : 'bot'}`;
+
+  // Avatar wrapper
+  const avatarWrapper = document.createElement('div');
+  avatarWrapper.className = 'mes-avatar-wrapper';
+
+  const avatar = document.createElement('div');
+  if (msg.is_user) {
+    avatar.className = 'mes-avatar';
+    avatar.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--accent-overlay);';
+    avatar.textContent = '👤';
+  } else {
+    if (charAvatar) {
+      const img = document.createElement('img');
+      img.className = 'mes-avatar';
+      img.src = charAvatar;
+      img.alt = '';
+      avatar.appendChild(img);
+    } else {
+      avatar.className = 'mes-avatar';
+      avatar.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--accent-overlay);';
+      avatar.textContent = msg.name.charAt(0);
+    }
+  }
+  if (avatar.className === 'mes-avatar' || avatar.children.length > 0) {
+    avatarWrapper.appendChild(avatar.children.length > 0 ? avatar.children[0] || avatar : avatar);
+  } else {
+    avatarWrapper.appendChild(avatar);
+  }
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'mes-name';
+  nameSpan.textContent = msg.name;
+  avatarWrapper.appendChild(nameSpan);
+
+  if (msg.send_date) {
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'mes-time';
+    timeSpan.textContent = formatTime(msg.send_date);
+    avatarWrapper.appendChild(timeSpan);
+  }
+
+  div.appendChild(avatarWrapper);
+
+  // Check for images (extra.image or inline references)
+  if (msg.extra && msg.extra.image) {
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'mes-image-container';
+    const img = document.createElement('img');
+    img.className = 'mes-image';
+
+    // Check if image is a data URL or a filename
+    if (msg.extra.image.startsWith('data:')) {
+      img.src = msg.extra.image;
+    } else {
+      // Try to find in loaded images
+      const found = findImage(msg.extra.image);
+      if (found) img.src = found;
+      else {
+        img.src = '';
+        img.alt = '이미지: ' + msg.extra.image;
+        img.style.display = 'none';
+      }
+    }
+
+    img.onclick = () => openLightbox(img.src);
+    imgContainer.appendChild(img);
+    div.appendChild(imgContainer);
+  }
+
+  // Message body
+  const body = document.createElement('div');
+  body.className = 'mes-body';
+  body.innerHTML = formatMessage(msg.mes);
+  div.appendChild(body);
+
+  // Swipe info
+  if (msg.swipes && msg.swipes.length > 1) {
+    const swipeInfo = document.createElement('div');
+    swipeInfo.className = 'mes-swipe-info';
+    swipeInfo.textContent = `스와이프 ${(msg.swipe_id || 0) + 1}/${msg.swipes.length}`;
+    div.appendChild(swipeInfo);
+  }
+
+  return div;
+}
+
+function formatMessage(text) {
+  if (!text) return '';
+
+  // Escape HTML first
+  let html = escHtml(text);
+
+  // Bold: **text**
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic: *text*
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  // Quote blocks: lines starting with >
+  html = html.replace(/^&gt;(.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // Code: `text`
+  html = html.replace(/`([^`]+)`/g, '<code style="background:var(--accent-overlay);padding:1px 4px;border-bottom:1.5px dashed var(--accent);font-size:0.92em;">$1</code>');
+
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+
+  // Paragraphs (double breaks)
+  html = html.replace(/(<br>){2,}/g, '</p><p>');
+  html = '<p>' + html + '</p>';
+
+  return html;
+}
+
+function findImage(filename) {
+  // Direct match
+  if (state.images[filename]) return state.images[filename];
+
+  // Try partial match
+  const lower = filename.toLowerCase();
+  for (const [key, url] of Object.entries(state.images)) {
+    if (key.toLowerCase().includes(lower) || lower.includes(key.toLowerCase())) {
+      return url;
+    }
+  }
+  return null;
+}
+
+// ===================================================================
+// GALLERY
+// ===================================================================
+function showGallery() {
+  hideAllPanels();
+  const panel = document.getElementById('gallery-panel');
+  panel.style.display = 'flex';
+
+  document.getElementById('galleryCount').textContent = `${state.imageList.length}개 이미지`;
+
+  const grid = document.getElementById('galleryGrid');
+
+  if (state.imageList.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-state-icon">🖼</div>
+        <div>이미지가 없습니다</div>
+        <div style="font-size:0.78rem">이미지 파일(.png, .jpg, .webp)을 추가해 주세요</div>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = state.imageList.map((img, idx) => `
+    <div class="gallery-item" onclick="openLightbox('${img.url}')">
+      <img class="gallery-thumb" src="${img.url}" alt="" loading="lazy">
+      <div class="gallery-item-info">
+        <div class="gallery-item-name">${escHtml(img.name)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===================================================================
+// NAVIGATION
+// ===================================================================
+function hideAllPanels() {
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('chat-list-panel').style.display = 'none';
+  document.getElementById('chat-viewer').style.display = 'none';
+  document.getElementById('gallery-panel').style.display = 'none';
+}
+
+function goHome() {
+  state.currentChar = null;
+  state.currentChat = null;
+  renderSidebar();
+
+  hideAllPanels();
+  if (Object.keys(state.characters).length === 0 && state.imageList.length === 0) {
+    document.getElementById('welcome').style.display = '';
+  } else {
+    // Show the first character's chats or welcome
+    document.getElementById('welcome').style.display = '';
+  }
+}
+
+function goBackToList() {
+  if (state.currentChar) {
+    selectCharacter(state.currentChar);
+  } else {
+    goHome();
+  }
+}
+
+// ===================================================================
+// LIGHTBOX
+// ===================================================================
+function openLightbox(src) {
+  if (!src) return;
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('open');
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+// ===================================================================
+// SIDEBAR MOBILE
+// ===================================================================
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('mobileOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('show');
+}
+
+function closeSidebarMobile() {
+  if (window.innerWidth <= 700) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('mobileOverlay').classList.remove('show');
+  }
+}
+
+// ===================================================================
+// UTILS
+// ===================================================================
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatDate(dateStr) {
+  try {
+    if (!dateStr) return '';
+    // SillyTavern date formats: "November 28, 2024 @12h 34m 56s" or ISO
+    const d = new Date(dateStr.replace(/@/g, '').replace(/(\d+)h\s*(\d+)m\s*(\d+)s/, '$1:$2:$3'));
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatTime(dateStr) {
+  try {
+    if (!dateStr) return '';
+    const d = new Date(dateStr.replace(/@/g, '').replace(/(\d+)h\s*(\d+)m\s*(\d+)s/, '$1:$2:$3'));
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+function updateStats() {
+  const charCount = Object.keys(state.characters).length;
+  const chatCount = Object.values(state.characters).reduce((s, c) => s + c.chats.length, 0);
+  const msgCount = Object.values(state.characters).reduce((s, c) =>
+    s + c.chats.reduce((ss, ch) => ss + ch.messages.length, 0), 0);
+  const imgCount = state.imageList.length;
+
+  document.getElementById('sidebarStats').innerHTML =
+    `${charCount}명 캐릭터 · ${chatCount}개 채팅<br>${msgCount.toLocaleString()}턴 · ${imgCount}개 이미지`;
+}
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// Keyboard shortcut: Escape closes lightbox
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  // Body drag & drop anywhere
+  document.body.addEventListener('dragover', (e) => e.preventDefault());
+  document.body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    handleDrop(e);
+  });
+});
+</script>
+</body>
+</html>
