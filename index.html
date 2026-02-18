@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>채팅 도서관</title>
+<title>Chat Library — 채팅 도서관</title>
 <style>
 /* ============================================================
-   Chat Library — Renewed Theme (가독성 개선)
+   Chat Library — SillyTavern Backup Viewer
+   Styled after macRetro UI light theme by @Junezz
    ============================================================ */
 
+/* Fonts */
 @font-face {
   font-family: 'RIDIBatang';
   src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/RIDIBatang.woff') format('woff');
@@ -22,52 +24,33 @@
   font-display: swap;
 }
 @font-face {
-  font-family: 'Pretendard';
-  font-weight: 400;
-  src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard/Pretendard-Regular.subset.woff2') format('woff2');
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Pretendard';
-  font-weight: 600;
-  src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard/Pretendard-SemiBold.subset.woff2') format('woff2');
+  font-family: 'ChangwonDangam';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2511-1@1.0/ChangwonDangamRound-Regular.woff2') format('woff2');
+  font-weight: normal;
   font-display: swap;
 }
 
+/* Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f8f6f2;
-  --bg-warm: #f3f0ea;
+  --bg: #f5f3ef;
   --surface: #ffffff;
-  --surface-alt: #faf9f7;
-  --text: #2c2c2c;
-  --text-secondary: #6b6b6b;
-  --text-dim: #999;
-  --border: #e0ddd7;
-  --border-strong: #c8c4bc;
-  --accent: #5a7d6a;
-  --accent-light: #e8f0eb;
-  --accent-hover: #4a6b5a;
-  --tag-bg: #eee8dd;
-  --tag-text: #7a6b55;
-  --user-bg: #f0f4ff;
-  --user-border: #d0d8ee;
-  --bot-bg: #fffef9;
-  --bot-border: #e8e4d8;
-  --shadow: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
-  --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
-  --font-body: 'Pretendard', 'SpoqaHanSans', -apple-system, sans-serif;
-  --font-reading: 'RIDIBatang', 'Pretendard', serif;
-  --font-size: 14px;
-  --line-height: 1.8;
-  --radius: 8px;
-  --radius-sm: 5px;
-  --radius-lg: 12px;
-  --scrollbar-w: 5px;
-  --topbar-h: 54px;
-  --sidebar-w: 280px;
+  --text: rgba(27, 28, 30, 1);
+  --text-dim: rgba(107, 107, 107, 1);
+  --border: rgba(27, 28, 30, 1);
+  --accent: rgba(27, 28, 30, 1);
+  --accent-overlay: rgba(27, 28, 30, 0.05);
+  --shadow: 2px 2px 0px rgba(27, 28, 30, 1);
+  --shadow-soft: 2px 2px 0px rgba(27, 28, 30, 0.15);
+  --red: #ce3636;
+  --font-body: 'RIDIBatang', 'SpoqaHanSans', serif;
+  --font-display: 'ChangwonDangam', 'SpoqaHanSans', sans-serif;
+  --font-size: 13.5px;
+  --line-height: 1.85;
+  --radius: 0px;
+  --scrollbar-w: 3px;
+  --topbar-h: 52px;
 }
 
 html { font-size: var(--font-size); }
@@ -78,73 +61,43 @@ body {
   line-height: var(--line-height);
   min-height: 100dvh;
   overflow: hidden;
-  -webkit-font-smoothing: antialiased;
 }
 
+/* Scrollbar */
 ::-webkit-scrollbar { width: var(--scrollbar-w); height: var(--scrollbar-w); }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: var(--radius); }
 
 /* ===== LAYOUT ===== */
 #app {
   display: grid;
   grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: 280px 1fr;
   height: 100dvh;
   width: 100%;
 }
 
-/* ===== TOP BAR ===== */
+/* TOP BAR */
 #topbar {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   gap: 16px;
   z-index: 100;
 }
 
-.topbar-title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  min-width: 0;
-}
-.topbar-title:hover .title-edit-hint { opacity: 1; }
-
-#libraryName {
-  font-family: var(--font-reading);
-  font-size: 1.15rem;
+#topbar h1 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
   font-weight: normal;
+  letter-spacing: 1px;
   white-space: nowrap;
-  letter-spacing: 0.5px;
-  color: var(--text);
 }
 
-#libraryNameInput {
-  font-family: var(--font-reading);
-  font-size: 1.15rem;
-  font-weight: normal;
-  border: none;
-  border-bottom: 2px solid var(--accent);
-  background: transparent;
-  outline: none;
-  padding: 0 2px;
-  color: var(--text);
-  width: 200px;
-}
-
-.title-edit-hint {
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  opacity: 0;
-  transition: opacity 0.2s;
-}
+#topbar h1 .accent { color: var(--text-dim); font-size: 0.85em; margin-left: 6px; }
 
 .topbar-actions {
   margin-left: auto;
@@ -153,29 +106,29 @@ body {
   align-items: center;
 }
 
-/* ===== BUTTONS ===== */
+/* Buttons */
 .btn {
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 14px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s;
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  transition: background 0.15s;
   white-space: nowrap;
-  font-weight: 500;
 }
-.btn:hover { background: var(--bg-warm); border-color: var(--border-strong); box-shadow: var(--shadow); }
-.btn:active { transform: translateY(1px); }
-.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn.primary:hover { background: var(--accent-hover); }
-.btn.small { padding: 5px 10px; font-size: 0.78rem; }
-.btn.ghost { border: none; background: none; color: var(--text-secondary); }
-.btn.ghost:hover { background: var(--accent-light); color: var(--accent); }
+.btn:hover { background: var(--accent-overlay); }
+.btn:active { box-shadow: 1px 1px 0px var(--border); transform: translate(1px,1px); }
+.btn.primary { background: var(--text); color: var(--surface); }
+.btn.primary:hover { background: rgba(27,28,30,0.85); }
+.btn.danger { color: var(--red); border-color: var(--red); }
+.btn.danger:hover { background: rgba(206,54,54,0.05); }
+.btn.small { padding: 3px 10px; font-size: 0.8rem; box-shadow: var(--shadow-soft); }
 
-/* ===== SIDEBAR ===== */
+/* SIDEBAR */
 #sidebar {
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -184,66 +137,28 @@ body {
   flex-direction: column;
 }
 
-.sidebar-section { padding: 12px 14px; }
-.sidebar-section + .sidebar-section { border-top: 1px solid var(--border); }
+.sidebar-section { padding: 12px; }
+.sidebar-section + .sidebar-section { border-top: 1px solid rgba(27,28,30,0.1); }
 
 .sidebar-title {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 1.8px;
+  letter-spacing: 1.5px;
   color: var(--text-dim);
   margin-bottom: 8px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  padding-left: 3px;
+  position: relative;
 }
+
 .sidebar-title::before {
   content: '';
+  position: absolute;
+  left: -12px;
+  top: 2px;
+  bottom: 2px;
   width: 3px;
-  height: 12px;
   background: var(--accent);
-  border-radius: 2px;
-  flex-shrink: 0;
 }
-
-/* Search */
-.search-box {
-  width: 100%;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  background: var(--surface-alt);
-  border-radius: var(--radius-sm);
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.search-box:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
-.search-box::placeholder { color: var(--text-dim); }
-
-/* Tag filter */
-.tag-filter-section { padding: 8px 14px; }
-.tag-filter-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
-}
-.tag-filter-chip {
-  font-size: 0.72rem;
-  padding: 3px 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-secondary);
-  transition: all 0.15s;
-  user-select: none;
-}
-.tag-filter-chip:hover { background: var(--accent-light); border-color: var(--accent); }
-.tag-filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-.tag-filter-chip.hide-mode { background: #f5e6e6; color: #a55; border-color: #daa; }
 
 /* Character list */
 .char-list { list-style: none; }
@@ -253,69 +168,69 @@ body {
   gap: 10px;
   padding: 8px 10px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   transition: all 0.12s;
   margin-bottom: 2px;
 }
-.char-item:hover { background: var(--accent-light); }
-.char-item.active { background: var(--accent-light); box-shadow: inset 3px 0 0 var(--accent); }
-.char-item.hidden-by-tag { display: none; }
+.char-item:hover { background: var(--accent-overlay); border-color: var(--border); box-shadow: var(--shadow-soft); }
+.char-item.active { background: var(--accent-overlay); border-color: var(--border); box-shadow: var(--shadow); }
 
 .char-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
   object-fit: cover;
   flex-shrink: 0;
-  background: var(--bg-warm);
+  background: var(--accent-overlay);
 }
 
 .char-info { min-width: 0; flex: 1; }
 .char-name { font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.char-meta { font-size: 0.7rem; color: var(--text-dim); margin-top: 1px; }
-.char-tags {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-.char-tag-badge {
-  font-size: 0.62rem;
-  padding: 1px 5px;
-  border-radius: 8px;
-  background: var(--tag-bg);
-  color: var(--tag-text);
-}
+.char-meta { font-size: 0.72rem; color: var(--text-dim); }
 
 .chat-count {
-  font-size: 0.68rem;
-  background: var(--accent-light);
-  color: var(--accent);
-  padding: 2px 7px;
-  border-radius: 10px;
+  font-size: 0.7rem;
+  background: var(--accent-overlay);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  box-shadow: var(--shadow-soft);
   flex-shrink: 0;
-  font-weight: 600;
 }
 
-/* ===== MAIN AREA ===== */
+/* Search */
+.search-box {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  outline: none;
+}
+.search-box:focus { border-color: var(--text); }
+.search-box::placeholder { color: var(--text-dim); }
+
+/* MAIN AREA */
 #main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  background: var(--bg);
 }
 
-/* Chat list */
+/* Chat list (when viewing a character's chats) */
 #chat-list-panel {
   display: none;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
 }
+
 .chat-list-header {
-  padding: 14px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -324,47 +239,57 @@ body {
   flex-shrink: 0;
 }
 .chat-list-header h2 { font-size: 1rem; font-weight: 600; }
-.chat-entries { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+.chat-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
 
 .chat-entry {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
   margin-bottom: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.12s;
 }
-.chat-entry:hover { box-shadow: var(--shadow-md); border-color: var(--accent); transform: translateY(-1px); }
+.chat-entry:hover { box-shadow: var(--shadow); background: var(--accent-overlay); }
 
-.chat-entry-icon { font-size: 1.3rem; flex-shrink: 0; width: 36px; text-align: center; opacity: 0.7; }
+.chat-entry-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
 .chat-entry-info { flex: 1; min-width: 0; }
 .chat-entry-name { font-weight: 600; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-entry-date { font-size: 0.72rem; color: var(--text-dim); margin-top: 3px; }
-.chat-entry-preview { font-size: 0.78rem; color: var(--text-secondary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px; }
+.chat-entry-date { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; }
+.chat-entry-preview { font-size: 0.78rem; color: var(--text-dim); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px; }
+
 .chat-entry-msgs {
-  font-size: 0.68rem;
-  background: var(--accent-light);
-  color: var(--accent);
-  padding: 3px 9px;
-  border-radius: 10px;
+  font-size: 0.7rem;
+  background: var(--accent-overlay);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
   flex-shrink: 0;
-  font-weight: 600;
 }
 
-/* ===== CHAT VIEWER ===== */
+/* CHAT VIEWER */
 #chat-viewer {
   display: none;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
+
 .chat-viewer-header {
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -377,157 +302,154 @@ body {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
-  max-width: 800px;
-  width: 100%;
-  margin: 0 auto;
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
 
-/* Message bubbles */
+/* Message bubbles — macRetro style */
 .message {
-  margin-bottom: 20px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  border: 1px solid var(--bot-border);
-  background: var(--bot-bg);
-}
-.message.user {
-  background: var(--user-bg);
-  border-color: var(--user-border);
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .mes-avatar-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  background: rgba(0,0,0,0.02);
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  gap: 8px;
+  padding: 12px 14px 4px 14px;
+  background: var(--accent-overlay);
+  border-bottom: 1px solid rgba(27,28,30,0.08);
 }
 .message.user .mes-avatar-wrapper { flex-direction: row-reverse; }
 
 .mes-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
   object-fit: cover;
   flex-shrink: 0;
-  background: var(--bg-warm);
+  background: var(--bg);
 }
 
-.mes-name { font-size: 0.82rem; font-weight: 600; flex: 1; color: var(--text); }
+.mes-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  flex: 1;
+}
 .message.user .mes-name { text-align: right; }
-.mes-time { font-size: 0.68rem; color: var(--text-dim); }
+
+.mes-time {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
 
 .mes-body {
-  padding: 14px 18px 16px;
-  font-family: var(--font-reading);
-  font-size: 0.92rem;
-  line-height: 1.95;
-  color: var(--text);
-  word-break: break-word;
+  padding: 10px 16px 14px 16px;
+  font-size: 0.88rem;
+  line-height: var(--line-height);
 }
-.mes-body p { margin-bottom: 12px; }
+
+.mes-body p { margin-bottom: 10px; }
 .mes-body p:last-child { margin-bottom: 0; }
-.mes-body em { color: var(--text-secondary); font-style: italic; }
-.mes-body strong { font-weight: 700; }
+
+/* Italic text (narration) */
+.mes-body em { color: var(--text-dim); }
+
+/* Quote text */
 .mes-body blockquote {
-  background: var(--bg-warm);
-  border-left: 3px solid var(--accent);
-  padding: 8px 14px;
-  margin: 8px 0;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  color: var(--text-secondary);
-}
-.mes-body code {
-  background: var(--bg-warm);
-  padding: 2px 5px;
-  border-radius: 3px;
-  font-size: 0.88em;
-  border: 1px solid var(--border);
+  background: var(--accent-overlay);
+  border-left: 2px solid var(--accent);
+  padding: 8px;
+  margin: 6px 0;
 }
 
-/* 정규식으로 안 걸러진 태그를 CSS로 숨김 */
-.mes-body .hidden-tag { display: none !important; }
+/* Images in messages */
+.mes-image-container {
+  padding: 0 16px 10px 16px;
+  display: flex;
+  justify-content: center;
+}
 
-.mes-image-container { padding: 6px 18px 12px; display: flex; justify-content: center; }
 .mes-image {
-  max-width: 50%;
-  max-height: 420px;
+  max-width: 45%;
+  max-height: 400px;
   object-fit: contain;
-  border-radius: var(--radius);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: opacity 0.15s;
 }
-.mes-image:hover { transform: scale(1.02); box-shadow: var(--shadow-md); }
+.mes-image:hover { opacity: 0.9; }
 
+/* Swipe indicator */
 .mes-swipe-info {
   font-size: 0.68rem;
   color: var(--text-dim);
   text-align: center;
-  padding: 4px 0 8px;
+  padding: 2px 0 6px 0;
 }
 
-/* ===== WELCOME ===== */
+/* WELCOME / DROP ZONE */
 #welcome {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 40px 20px;
+  padding: 40px;
   text-align: center;
 }
-.welcome-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.6; }
-.welcome-title { font-family: var(--font-reading); font-size: 1.6rem; margin-bottom: 8px; color: var(--text); }
-.welcome-desc { font-size: 0.9rem; color: var(--text-secondary); max-width: 440px; line-height: 1.8; margin-bottom: 28px; }
+
+.welcome-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.welcome-desc {
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  max-width: 420px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
 
 .drop-zone {
-  border: 2px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  padding: 36px 48px;
+  border: 2px dashed var(--border);
+  padding: 32px 48px;
   cursor: pointer;
   transition: all 0.2s;
   background: var(--surface);
-  max-width: 480px;
+  max-width: 500px;
   width: 100%;
 }
 .drop-zone:hover, .drop-zone.drag-over {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  box-shadow: var(--shadow-md);
+  background: var(--accent-overlay);
+  border-color: var(--text);
+  box-shadow: var(--shadow);
 }
-.drop-zone-text { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.7; }
+.drop-zone-text { font-size: 0.85rem; color: var(--text-dim); }
 .drop-zone-text strong { color: var(--text); }
 
-.welcome-server-status {
-  margin-top: 20px;
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-.status-dot.online { background: var(--accent); }
-
-/* ===== GALLERY ===== */
+/* IMAGE GALLERY */
 #gallery-panel {
   display: none;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
+
 .gallery-header {
-  padding: 14px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -537,155 +459,88 @@ body {
 }
 .gallery-header h2 { font-size: 1rem; font-weight: 600; flex: 1; }
 
-.gallery-content { flex: 1; overflow-y: auto; padding: 16px 20px; }
-
-.gallery-folder {
-  margin-bottom: 24px;
-}
-.gallery-folder-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 8px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin-bottom: 10px;
-  user-select: none;
-  transition: background 0.15s;
-}
-.gallery-folder-header:hover { background: var(--accent-light); }
-.gallery-folder-header .folder-icon { font-size: 1rem; transition: transform 0.2s; }
-.gallery-folder-header.collapsed .folder-icon { transform: rotate(-90deg); }
-.gallery-folder-header .folder-name { font-weight: 600; font-size: 0.88rem; flex: 1; }
-.gallery-folder-header .folder-count { font-size: 0.72rem; color: var(--text-dim); }
-
 .gallery-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
   align-content: start;
 }
-.gallery-folder.collapsed .gallery-grid { display: none; }
 
 .gallery-item {
   border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.12s;
   overflow: hidden;
 }
-.gallery-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.gallery-item:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
 
 .gallery-thumb {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   display: block;
-  background: var(--bg-warm);
-}
-.gallery-item-info { padding: 6px 8px; }
-.gallery-item-name { font-size: 0.68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
-
-/* ===== TAG MODAL ===== */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 5000;
-  align-items: center;
-  justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-
-.modal {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  width: 340px;
-  max-width: 90vw;
-  padding: 24px;
-}
-.modal h3 { font-size: 1rem; margin-bottom: 16px; }
-.modal-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 16px;
-  min-height: 30px;
-}
-.modal-tag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.78rem;
-  padding: 4px 10px;
-  border-radius: 14px;
-  background: var(--tag-bg);
-  color: var(--tag-text);
-}
-.modal-tag .remove-tag {
-  cursor: pointer;
-  font-size: 0.9rem;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-  line-height: 1;
-}
-.modal-tag .remove-tag:hover { opacity: 1; color: #c33; }
-
-.modal-input-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-.modal-input-row input {
-  flex: 1;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  outline: none;
-}
-.modal-input-row input:focus { border-color: var(--accent); }
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  background: var(--bg);
 }
 
-/* ===== LIGHTBOX ===== */
+.gallery-item-info {
+  padding: 6px 8px;
+  border-top: 1px solid rgba(27,28,30,0.1);
+}
+.gallery-item-name {
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+/* LIGHTBOX */
 .lightbox {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.88);
+  background: rgba(0,0,0,0.85);
   z-index: 9999;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
 .lightbox.open { display: flex; }
-.lightbox img { max-width: 92vw; max-height: 92vh; object-fit: contain; border-radius: 4px; }
-.lightbox-close { position: absolute; top: 16px; right: 20px; font-size: 2rem; color: white; cursor: pointer; opacity: 0.7; }
+.lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+}
+.lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 1.8rem;
+  color: white;
+  cursor: pointer;
+  opacity: 0.7;
+}
 .lightbox-close:hover { opacity: 1; }
 
-/* ===== STATS BAR ===== */
+/* STATS BAR */
 .stats-bar {
-  padding: 8px 20px;
+  padding: 8px 16px;
   background: var(--surface);
   border-top: 1px solid var(--border);
   font-size: 0.72rem;
   color: var(--text-dim);
+  display: flex;
+  gap: 16px;
   flex-shrink: 0;
 }
 
-/* ===== EMPTY & LOADING ===== */
+/* Empty state */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -696,13 +551,27 @@ body {
   font-size: 0.9rem;
   gap: 8px;
 }
-.empty-state-icon { font-size: 2rem; opacity: 0.4; }
+.empty-state-icon { font-size: 2rem; opacity: 0.5; }
 
-.loading { display: flex; align-items: center; justify-content: center; height: 100%; gap: 10px; color: var(--text-dim); }
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-dim);
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-.spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--accent-overlay);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
 
-/* ===== MOBILE ===== */
+/* Sidebar toggle for mobile */
 .sidebar-toggle {
   display: none;
   font-size: 1.2rem;
@@ -713,45 +582,94 @@ body {
   padding: 4px;
 }
 
+/* Tab buttons */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.tab-btn {
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--text); background: var(--accent-overlay); }
+.tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Settings hint */
+.hint-text {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 8px 0;
+  line-height: 1.5;
+}
+
+/* Path display */
+.path-display {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--accent-overlay);
+  padding: 6px 10px;
+  border: 1px solid rgba(27,28,30,0.1);
+  margin: 8px 0;
+  word-break: break-all;
+  font-family: monospace;
+}
+
+/* MOBILE */
 @media (max-width: 700px) {
-  #app { grid-template-columns: 1fr; }
+  #app {
+    grid-template-columns: 1fr;
+  }
   #sidebar {
     position: fixed;
-    left: calc(-1 * var(--sidebar-w));
+    left: -280px;
     top: var(--topbar-h);
     bottom: 0;
-    width: var(--sidebar-w);
+    width: 280px;
     z-index: 200;
     transition: left 0.25s ease;
     box-shadow: none;
   }
-  #sidebar.open { left: 0; box-shadow: 4px 0 20px rgba(0,0,0,0.12); }
+  #sidebar.open {
+    left: 0;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  }
   .sidebar-toggle { display: block; }
-  .mes-image { max-width: 85%; }
-  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-  .mobile-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 199; }
+  .mes-image { max-width: 80%; }
+  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 199;
+  }
   .mobile-overlay.show { display: block; }
-  .chat-messages { padding: 12px; }
 }
 
-/* ===== TOAST ===== */
+/* TOAST */
 .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 10000; }
 .toast {
-  padding: 10px 18px;
+  padding: 8px 16px;
   background: var(--text);
   color: var(--surface);
-  font-family: var(--font-body);
+  font-family: inherit;
   font-size: 0.8rem;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow);
   margin-top: 6px;
   animation: toastIn 0.3s ease;
 }
-.toast.error { background: #c44; }
-@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
-
-/* ===== HINT ===== */
-.hint-text { font-size: 0.72rem; color: var(--text-dim); padding: 6px 0; line-height: 1.5; }
+.toast.error { background: var(--red); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
@@ -760,12 +678,9 @@ body {
   <!-- TOP BAR -->
   <header id="topbar">
     <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="메뉴">☰</button>
-    <div class="topbar-title" onclick="startEditTitle()">
-      <span id="libraryName">채팅 도서관</span>
-      <span class="title-edit-hint">✎</span>
-    </div>
+    <h1>Chat Library<span class="accent">채팅 도서관</span></h1>
     <div class="topbar-actions">
-      <button class="btn small ghost" onclick="showGallery()">🖼 갤러리</button>
+      <button class="btn small" onclick="showGallery()">🖼 갤러리</button>
       <button class="btn small primary" onclick="triggerFileInput()">＋ 파일 추가</button>
     </div>
   </header>
@@ -773,20 +688,14 @@ body {
   <!-- SIDEBAR -->
   <nav id="sidebar">
     <div class="sidebar-section">
-      <input type="text" class="search-box" placeholder="캐릭터 검색..." id="searchBox" oninput="filterCharacters()">
+      <input type="text" class="search-box" placeholder="캐릭터 검색..." oninput="filterCharacters(this.value)">
     </div>
-
-    <!-- 태그 필터 -->
-    <div class="sidebar-section tag-filter-section" id="tagFilterSection" style="display:none;">
-      <div class="sidebar-title">태그 필터</div>
-      <div class="tag-filter-list" id="tagFilterList"></div>
-    </div>
-
     <div class="sidebar-section" style="flex:1; overflow-y:auto; padding-top:4px;">
-      <div class="sidebar-title">서재</div>
-      <ul class="char-list" id="charList"></ul>
+      <div class="sidebar-title">캐릭터 목록</div>
+      <ul class="char-list" id="charList">
+        <!-- dynamically filled -->
+      </ul>
     </div>
-
     <div class="sidebar-section">
       <div class="sidebar-title">통계</div>
       <div id="sidebarStats" class="hint-text">파일을 불러와 주세요</div>
@@ -798,9 +707,10 @@ body {
 
   <!-- MAIN CONTENT -->
   <main id="main">
+    <!-- Welcome / Drop Zone -->
     <div id="welcome">
       <div class="welcome-icon">📚</div>
-      <div class="welcome-title" id="welcomeTitle">채팅 도서관</div>
+      <div class="welcome-title">채팅 도서관</div>
       <div class="welcome-desc">
         백업한 SillyTavern 채팅 파일(.jsonl)과 이미지를 불러와서<br>
         도서관처럼 열람할 수 있어요.
@@ -816,24 +726,25 @@ body {
           <span style="font-size:0.78rem">.jsonl (채팅) · .png .jpg .webp (이미지)</span>
         </div>
       </div>
-      <div class="welcome-server-status" id="serverStatus">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusText">서버 확인 중...</span>
+      <div class="hint-text" style="margin-top:12px; max-width:420px;">
+        💡 Termux에서 백업한 chats 폴더와 user/images 폴더를 통째로 넣으면<br>
+        캐릭터별로 자동 정리됩니다. SD카드에 있어도 OK!
       </div>
     </div>
 
+    <!-- Chat List Panel -->
     <div id="chat-list-panel">
       <div class="chat-list-header">
-        <button class="btn small" onclick="goHome()">← 서재</button>
+        <button class="btn small" onclick="goHome()">← 돌아가기</button>
         <h2 id="chatListTitle">채팅 목록</h2>
-        <button class="btn small ghost" onclick="openTagModal(state.currentChar)" title="태그 관리">🏷️</button>
       </div>
       <div class="chat-entries" id="chatEntries"></div>
     </div>
 
+    <!-- Chat Viewer -->
     <div id="chat-viewer">
       <div class="chat-viewer-header">
-        <button class="btn small" onclick="goBackToList()">← 목록</button>
+        <button class="btn small" onclick="goBackToList()">← 목록으로</button>
         <h2 id="chatViewerTitle">채팅</h2>
         <span class="mes-time" id="chatViewerDate"></span>
       </div>
@@ -841,13 +752,14 @@ body {
       <div class="stats-bar" id="chatStats"></div>
     </div>
 
+    <!-- Gallery Panel -->
     <div id="gallery-panel">
       <div class="gallery-header">
-        <button class="btn small" onclick="goHome()">← 서재</button>
+        <button class="btn small" onclick="goHome()">← 돌아가기</button>
         <h2>🖼 이미지 갤러리</h2>
         <span class="mes-time" id="galleryCount"></span>
       </div>
-      <div class="gallery-content" id="galleryContent"></div>
+      <div class="gallery-grid" id="galleryGrid"></div>
     </div>
   </main>
 </div>
@@ -855,28 +767,13 @@ body {
 <!-- Hidden file input -->
 <input type="file" id="fileInput" multiple accept=".jsonl,.json,.png,.jpg,.jpeg,.webp,.gif" style="display:none" onchange="handleFileSelect(event)">
 
-<!-- Tag Modal -->
-<div class="modal-overlay" id="tagModal">
-  <div class="modal" onclick="event.stopPropagation()">
-    <h3 id="tagModalTitle">태그 관리</h3>
-    <div class="modal-tags" id="tagModalTags"></div>
-    <div class="modal-input-row">
-      <input type="text" id="tagInput" placeholder="새 태그 입력..." onkeydown="if(event.key==='Enter')addTagFromInput()">
-      <button class="btn small primary" onclick="addTagFromInput()">추가</button>
-    </div>
-    <div class="modal-actions">
-      <button class="btn small" onclick="closeTagModal()">닫기</button>
-    </div>
-  </div>
-</div>
-
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <span class="lightbox-close">&times;</span>
   <img id="lightboxImg" src="" alt="">
 </div>
 
-<!-- Toast -->
+<!-- Toast container -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -884,357 +781,119 @@ body {
 // STATE
 // ===================================================================
 const state = {
-  characters: {},   // { charName: { avatar, chats: [{ name, date, messages, file, msgCount }], tags: [] } }
+  characters: {},   // { charName: { avatar: blobUrl, chats: [ { name, date, messages, file } ] } }
   images: {},       // { filename: blobUrl }
-  imageList: [],    // [ { name, url, dir } ]
-  imageFolders: {}, // { dir: [{ name, url }] }
-  tags: {},         // { charName: [tag1, tag2, ...] }
+  imageList: [],    // [ { name, url } ]
   currentChar: null,
   currentChat: null,
-  serverMode: false,
-  activeTagFilters: [],   // selected tag filters
-  tagFilterMode: 'show',  // 'show' = show only tagged, 'hide' = hide tagged
-  libraryName: '채팅 도서관',
 };
-
-// ===================================================================
-// INIT
-// ===================================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  document.body.addEventListener('dragover', e => e.preventDefault());
-  document.body.addEventListener('drop', e => { e.preventDefault(); handleDrop(e); });
-
-  // 로컬 설정 로드
-  loadLocalSettings();
-
-  // 서버 연결 시도
-  try {
-    const res = await fetch('/api/scan');
-    if (res.ok) {
-      const data = await res.json();
-      state.serverMode = true;
-      document.getElementById('statusDot').classList.add('online');
-      document.getElementById('statusText').textContent = `서버 연결됨 — ${data.roots.length}개 경로`;
-      loadServerData(data);
-
-      // 서버 설정 로드
-      try {
-        const sRes = await fetch('/api/settings');
-        if (sRes.ok) {
-          const settings = await sRes.json();
-          if (settings.libraryName) {
-            state.libraryName = settings.libraryName;
-            applyLibraryName();
-          }
-        }
-      } catch(e) {}
-
-      // 이미지 로드
-      try {
-        const iRes = await fetch('/api/images');
-        if (iRes.ok) {
-          const iData = await iRes.json();
-          state.imageList = iData.images || [];
-          state.imageFolders = iData.folders || {};
-          for (const img of state.imageList) {
-            state.images[img.name] = img.url;
-          }
-        }
-      } catch(e) {}
-
-      renderSidebar();
-      updateStats();
-
-      if (Object.keys(state.characters).length > 0) {
-        document.getElementById('welcome').style.display = 'none';
-      }
-    } else {
-      throw new Error('not ok');
-    }
-  } catch (e) {
-    document.getElementById('statusDot').classList.remove('online');
-    document.getElementById('statusText').textContent = '오프라인 모드 — 파일을 드래그해서 추가하세요';
-  }
-});
-
-function loadServerData(data) {
-  for (const [name, info] of Object.entries(data.characters)) {
-    state.characters[name] = {
-      avatar: info.avatar || null,
-      chats: info.chats.map(c => ({
-        name: c.name,
-        date: c.modified,
-        file: c.file,
-        msgCount: 0,
-        messages: [],
-        serverFile: true,
-      })),
-      tags: info.tags || [],
-    };
-    state.tags[name] = info.tags || [];
-  }
-  buildTagFilterList();
-}
-
-// ===================================================================
-// LIBRARY NAME
-// ===================================================================
-function applyLibraryName() {
-  document.getElementById('libraryName').textContent = state.libraryName;
-  document.getElementById('welcomeTitle').textContent = state.libraryName;
-  document.title = state.libraryName;
-}
-
-function startEditTitle() {
-  const container = document.querySelector('.topbar-title');
-  const span = document.getElementById('libraryName');
-  const current = span.textContent;
-
-  const input = document.createElement('input');
-  input.id = 'libraryNameInput';
-  input.value = current;
-  input.maxLength = 30;
-
-  span.style.display = 'none';
-  container.querySelector('.title-edit-hint').style.display = 'none';
-  container.insertBefore(input, span);
-  input.focus();
-  input.select();
-
-  const finish = () => {
-    const val = input.value.trim() || '채팅 도서관';
-    state.libraryName = val;
-    span.textContent = val;
-    span.style.display = '';
-    container.querySelector('.title-edit-hint').style.display = '';
-    if (input.parentNode) input.remove();
-    applyLibraryName();
-    saveLibraryName();
-  };
-
-  input.onblur = finish;
-  input.onkeydown = (e) => { if (e.key === 'Enter') finish(); if (e.key === 'Escape') { input.value = current; finish(); } };
-  container.onclick = null;
-  setTimeout(() => container.onclick = () => startEditTitle(), 300);
-}
-
-function saveLibraryName() {
-  localStorage.setItem('chatlib-name', state.libraryName);
-  if (state.serverMode) {
-    fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ libraryName: state.libraryName }),
-    }).catch(() => {});
-  }
-}
-
-function loadLocalSettings() {
-  const name = localStorage.getItem('chatlib-name');
-  if (name) { state.libraryName = name; applyLibraryName(); }
-  const tags = localStorage.getItem('chatlib-tags');
-  if (tags) { try { state.tags = JSON.parse(tags); } catch(e) {} }
-}
-
-// ===================================================================
-// TAG SYSTEM
-// ===================================================================
-function openTagModal(charName) {
-  if (!charName) return;
-  state._tagEditChar = charName;
-  document.getElementById('tagModalTitle').textContent = charName + ' — 태그';
-  document.getElementById('tagInput').value = '';
-  renderTagModalTags();
-  document.getElementById('tagModal').classList.add('open');
-  setTimeout(() => document.getElementById('tagInput').focus(), 100);
-}
-
-function closeTagModal() {
-  document.getElementById('tagModal').classList.remove('open');
-}
-
-function renderTagModalTags() {
-  const charName = state._tagEditChar;
-  const tags = state.tags[charName] || [];
-  const container = document.getElementById('tagModalTags');
-  if (tags.length === 0) {
-    container.innerHTML = '<span style="font-size:0.78rem;color:var(--text-dim)">태그가 없습니다</span>';
-    return;
-  }
-  container.innerHTML = tags.map((t, i) =>
-    `<span class="modal-tag">${escHtml(t)}<span class="remove-tag" onclick="removeTag(${i})">×</span></span>`
-  ).join('');
-}
-
-function addTagFromInput() {
-  const input = document.getElementById('tagInput');
-  const tag = input.value.trim();
-  if (!tag || !state._tagEditChar) return;
-  if (!state.tags[state._tagEditChar]) state.tags[state._tagEditChar] = [];
-  if (!state.tags[state._tagEditChar].includes(tag)) {
-    state.tags[state._tagEditChar].push(tag);
-  }
-  if (state.characters[state._tagEditChar]) {
-    state.characters[state._tagEditChar].tags = state.tags[state._tagEditChar];
-  }
-  input.value = '';
-  renderTagModalTags();
-  saveTags();
-  renderSidebar();
-  buildTagFilterList();
-}
-
-function removeTag(idx) {
-  const charName = state._tagEditChar;
-  if (!state.tags[charName]) return;
-  state.tags[charName].splice(idx, 1);
-  if (state.characters[charName]) {
-    state.characters[charName].tags = state.tags[charName];
-  }
-  renderTagModalTags();
-  saveTags();
-  renderSidebar();
-  buildTagFilterList();
-}
-
-function saveTags() {
-  localStorage.setItem('chatlib-tags', JSON.stringify(state.tags));
-  if (state.serverMode) {
-    fetch('/api/tags', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state.tags),
-    }).catch(() => {});
-  }
-}
-
-function buildTagFilterList() {
-  const allTags = new Set();
-  for (const tags of Object.values(state.tags)) {
-    for (const t of tags) allTags.add(t);
-  }
-
-  const section = document.getElementById('tagFilterSection');
-  const list = document.getElementById('tagFilterList');
-
-  if (allTags.size === 0) {
-    section.style.display = 'none';
-    return;
-  }
-
-  section.style.display = '';
-  list.innerHTML = Array.from(allTags).sort().map(t => {
-    const isActive = state.activeTagFilters.includes(t);
-    return `<span class="tag-filter-chip ${isActive ? 'active' : ''}" onclick="toggleTagFilter('${escHtml(t)}')">${escHtml(t)}</span>`;
-  }).join('') + `<span class="tag-filter-chip ${state.activeTagFilters.length > 0 ? '' : ''}" onclick="clearTagFilters()" style="border-style:dashed;">전체</span>`;
-}
-
-function toggleTagFilter(tag) {
-  const idx = state.activeTagFilters.indexOf(tag);
-  if (idx >= 0) state.activeTagFilters.splice(idx, 1);
-  else state.activeTagFilters.push(tag);
-  buildTagFilterList();
-  filterCharacters();
-}
-
-function clearTagFilters() {
-  state.activeTagFilters = [];
-  buildTagFilterList();
-  filterCharacters();
-}
 
 // ===================================================================
 // FILE HANDLING
 // ===================================================================
-function triggerFileInput() { document.getElementById('fileInput').click(); }
-function handleDragOver(e) { e.preventDefault(); if (e.currentTarget.classList) e.currentTarget.classList.add('drag-over'); }
-function handleDragLeave(e) { if (e.currentTarget.classList) e.currentTarget.classList.remove('drag-over'); }
+function triggerFileInput() {
+  document.getElementById('fileInput').click();
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
 
 async function handleDrop(e) {
   e.preventDefault();
-  const dz = document.getElementById('dropZone');
-  if (dz) dz.classList.remove('drag-over');
-  const items = e.dataTransfer?.items;
+  e.currentTarget.classList.remove('drag-over');
+
+  const items = e.dataTransfer.items;
   if (!items) return;
+
   const files = [];
   const promises = [];
+
   for (const item of items) {
-    const entry = item.webkitGetAsEntry?.();
-    if (entry) promises.push(traverseEntry(entry, files));
+    const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry) {
+      promises.push(traverseEntry(entry, files));
+    }
   }
+
   await Promise.all(promises);
-  if (files.length === 0) for (const f of e.dataTransfer.files) files.push(f);
+  if (files.length === 0) {
+    // Fallback for flat file drop
+    for (const f of e.dataTransfer.files) files.push(f);
+  }
   processFiles(files);
 }
 
 function traverseEntry(entry, files) {
-  return new Promise(resolve => {
-    if (entry.isFile) entry.file(f => { files.push(f); resolve(); });
-    else if (entry.isDirectory) {
-      entry.createReader().readEntries(async entries => {
-        for (const e of entries) await traverseEntry(e, files);
+  return new Promise((resolve) => {
+    if (entry.isFile) {
+      entry.file(f => { files.push(f); resolve(); });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      reader.readEntries(async (entries) => {
+        for (const e of entries) {
+          await traverseEntry(e, files);
+        }
         resolve();
       });
-    } else resolve();
+    } else {
+      resolve();
+    }
   });
 }
 
-function handleFileSelect(e) { processFiles(Array.from(e.target.files)); e.target.value = ''; }
+function handleFileSelect(e) {
+  processFiles(Array.from(e.target.files));
+  e.target.value = '';
+}
 
 async function processFiles(files) {
   let chatCount = 0, imgCount = 0;
+
   for (const file of files) {
     const name = file.name.toLowerCase();
-    if (name.endsWith('.jsonl')) { await parseChatFile(file); chatCount++; }
-    else if (name.endsWith('.json') && !name.includes('settings') && !name.includes('theme')) { await parseChatFile(file); chatCount++; }
-    else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) {
-      const u = URL.createObjectURL(file);
-      state.images[file.name] = u;
-      // 폴더 정보 추출
-      const rp = file.webkitRelativePath || '';
-      const parts = rp.split('/');
-      const dir = parts.length >= 2 ? parts[parts.length - 2] : '';
-      state.imageList.push({ name: file.name, url: u, dir });
-      if (!state.imageFolders[dir || '기타']) state.imageFolders[dir || '기타'] = [];
-      state.imageFolders[dir || '기타'].push({ name: file.name, url: u });
 
-      for (const cn of Object.keys(state.characters)) {
-        if (file.name.toLowerCase().includes(normalizeForMatch(cn))) {
-          if (!state.characters[cn].avatar) state.characters[cn].avatar = u;
+    if (name.endsWith('.jsonl')) {
+      await parseChatFile(file);
+      chatCount++;
+    } else if (name.endsWith('.json') && !name.includes('settings') && !name.includes('theme')) {
+      // Possibly a chat file saved as .json
+      await parseChatFile(file);
+      chatCount++;
+    } else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) {
+      const url = URL.createObjectURL(file);
+      state.images[file.name] = url;
+      state.imageList.push({ name: file.name, url });
+
+      // Check if it's a character avatar (matches char name pattern)
+      for (const charName of Object.keys(state.characters)) {
+        if (file.name.toLowerCase().includes(charName.toLowerCase().replace(/[^a-z0-9가-힣]/gi, ''))) {
+          // Could be avatar — only set if none yet
+          if (!state.characters[charName].avatar) {
+            state.characters[charName].avatar = url;
+          }
         }
       }
       imgCount++;
     }
   }
-  renderSidebar(); updateStats();
-  if (chatCount > 0 || imgCount > 0) toast(`${chatCount}개 채팅 · ${imgCount}개 이미지 로드 완료`);
-  if (Object.keys(state.characters).length > 0) document.getElementById('welcome').style.display = 'none';
-}
 
-// ── 클라이언트 정규식 필터 ──
-const CLIENT_CLEANUP_REGEXES = [
-  { find: /(?:```?\w*[\r\n]?)?<(thought|cot|thinking|CoT|think|starter)[\s\S]*?<\/(thought|cot|thinking|CoT|think|starter)>(?:[\r\n]?```?)?/gi, replace: '' },
-  { find: /<pic>[\s\S]*?<\/pic>/gi, replace: '' },
-  { find: /<imageInfo>[\s\S]*?<\/imageInfo>/gi, replace: '' },
-  { find: /<pic\s+prompt="[^"]*"\s*>/gi, replace: '' },
-  { find: /<\/pic>/gi, replace: '' },
-  { find: /➛/g, replace: '' },
-  { find: /🥨 Sex Position[\s\S]*?(?=```)/g, replace: '' },
-  { find: /\[OOC:[\s\S]*?\]/gi, replace: '' },
-  { find: /<OOC>[\s\S]*?<\/OOC>/gi, replace: '' },
-  { find: /<extra_prompt>[\s\S]*?<\/extra_prompt>/gi, replace: '' },
-  { find: /<s>[\s\S]*?<\/system>/gi, replace: '' },
-];
+  renderSidebar();
+  updateStats();
 
-function clientCleanMessage(text) {
-  if (!text) return '';
-  let c = text;
-  for (const r of CLIENT_CLEANUP_REGEXES) c = c.replace(r.find, r.replace);
-  return c.replace(/\n{3,}/g, '\n\n').trim();
-}
+  if (chatCount > 0 || imgCount > 0) {
+    toast(`${chatCount}개 채팅 · ${imgCount}개 이미지 로드 완료`);
+  }
 
-function normalizeForMatch(str) {
-  return str.toLowerCase().replace(/[''"`\s_\-\.]/g, '').replace(/[^a-z0-9가-힣ㄱ-ㅎㅏ-ㅣ]/g, '');
+  // Hide welcome if we have data
+  if (Object.keys(state.characters).length > 0) {
+    document.getElementById('welcome').style.display = 'none';
+  }
 }
 
 async function parseChatFile(file) {
@@ -1250,31 +909,75 @@ async function parseChatFile(file) {
   for (const line of lines) {
     try {
       const msg = JSON.parse(line.trim());
-      if (!charName && msg.name && !msg.is_user) charName = msg.name;
-      if (!charName && msg.character_name) charName = msg.character_name;
-      if (!charName) {
-        const parts = (file.webkitRelativePath || '').split('/');
-        if (parts.length >= 2) charName = parts[parts.length - 2];
+
+      // First message often has chat metadata
+      if (!charName && msg.name && !msg.is_user) {
+        charName = msg.name;
       }
-      if (!chatDate && (msg.send_date || msg.create_date)) chatDate = msg.send_date || msg.create_date;
+      if (!charName && msg.character_name) {
+        charName = msg.character_name;
+      }
+
+      // Extract character name from file path pattern
+      // SillyTavern saves chats like: charname/2024-1-1@12h34m56s.jsonl
+      if (!charName) {
+        const pathMatch = file.webkitRelativePath || '';
+        const parts = pathMatch.split('/');
+        if (parts.length >= 2) {
+          charName = parts[parts.length - 2];
+        }
+      }
+
+      if (msg.send_date) {
+        if (!chatDate) chatDate = msg.send_date;
+      }
+      if (msg.create_date) {
+        if (!chatDate) chatDate = msg.create_date;
+      }
 
       messages.push({
         name: msg.name || (msg.is_user ? '사용자' : charName || '???'),
         is_user: !!msg.is_user,
-        mes: clientCleanMessage(msg.mes || ''),
+        mes: msg.mes || '',
         send_date: msg.send_date || msg.create_date || '',
         extra: msg.extra || {},
         swipe_id: msg.swipe_id,
         swipes: msg.swipes,
+        gen_started: msg.gen_started,
+        gen_finished: msg.gen_finished,
       });
-    } catch (e) {}
+    } catch (e) {
+      // Skip unparseable lines
+    }
   }
+
   if (messages.length === 0) return;
-  if (!charName) { const d = chatName.indexOf(' - '); charName = d > 0 ? chatName.substring(0, d) : chatName; }
+
+  // Determine character name from file naming convention
+  if (!charName) {
+    // Try filename pattern: "Character Name - chatname.jsonl"
+    const dashIdx = chatName.indexOf(' - ');
+    if (dashIdx > 0) {
+      charName = chatName.substring(0, dashIdx);
+    } else {
+      charName = chatName;
+    }
+  }
+
+  // Clean up character name
   charName = charName.replace(/\.png$/i, '');
 
-  if (!state.characters[charName]) state.characters[charName] = { avatar: null, chats: [], tags: state.tags[charName] || [] };
-  state.characters[charName].chats.push({ name: chatName, date: chatDate, messages, file: file.name, msgCount: messages.length });
+  if (!state.characters[charName]) {
+    state.characters[charName] = { avatar: null, chats: [] };
+  }
+
+  state.characters[charName].chats.push({
+    name: chatName,
+    date: chatDate,
+    messages: messages,
+    file: file.name,
+    msgCount: messages.length,
+  });
 }
 
 // ===================================================================
@@ -1283,56 +986,38 @@ async function parseChatFile(file) {
 function renderSidebar() {
   const list = document.getElementById('charList');
   const chars = Object.entries(state.characters).sort((a, b) => {
-    const aT = a[1].chats.reduce((s, c) => s + (c.msgCount || c.messages?.length || 0), 0);
-    const bT = b[1].chats.reduce((s, c) => s + (c.msgCount || c.messages?.length || 0), 0);
-    return bT - aT;
+    // Sort by total messages descending
+    const aTotal = a[1].chats.reduce((s, c) => s + c.messages.length, 0);
+    const bTotal = b[1].chats.reduce((s, c) => s + c.messages.length, 0);
+    return bTotal - aTotal;
   });
 
   list.innerHTML = chars.map(([name, data]) => {
-    const cnt = data.chats.length;
-    const total = data.chats.reduce((s, c) => s + (c.msgCount || c.messages?.length || 0), 0);
-    const tags = data.tags || state.tags[name] || [];
-    const tagBadges = tags.map(t => `<span class="char-tag-badge">${escHtml(t)}</span>`).join('');
-
+    const chatCount = data.chats.length;
     const avatarHtml = data.avatar
-      ? `<img class="char-avatar" src="${data.avatar}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="char-avatar" style="display:none;align-items:center;justify-content:center;font-size:1rem;">${name.charAt(0)}</div>`
-      : `<div class="char-avatar" style="display:flex;align-items:center;justify-content:center;font-size:1rem;">${name.charAt(0)}</div>`;
+      ? `<img class="char-avatar" src="${data.avatar}" alt="">`
+      : `<div class="char-avatar" style="display:flex;align-items:center;justify-content:center;font-size:1.1rem;">${name.charAt(0)}</div>`;
 
     return `
       <li class="char-item ${state.currentChar === name ? 'active' : ''}"
-          onclick="selectCharacter('${escAttr(name)}')"
-          data-name="${escAttr(name.toLowerCase())}"
-          data-tags="${escAttr(tags.join(',').toLowerCase())}">
+          onclick="selectCharacter('${escHtml(name)}')"
+          data-name="${escHtml(name.toLowerCase())}">
         ${avatarHtml}
         <div class="char-info">
           <div class="char-name">${escHtml(name)}</div>
-          <div class="char-meta">${cnt}개 채팅</div>
-          ${tagBadges ? `<div class="char-tags">${tagBadges}</div>` : ''}
+          <div class="char-meta">${chatCount}개 채팅</div>
         </div>
-        <span class="chat-count">${total}</span>
+        <span class="chat-count">${data.chats.reduce((s, c) => s + c.messages.length, 0)}</span>
       </li>
     `;
   }).join('');
-
-  filterCharacters();
 }
 
-function filterCharacters() {
-  const q = (document.getElementById('searchBox')?.value || '').toLowerCase();
-  const activeTags = state.activeTagFilters;
-
+function filterCharacters(query) {
+  const q = query.toLowerCase();
   document.querySelectorAll('.char-item').forEach(el => {
     const name = el.dataset.name || '';
-    const tags = (el.dataset.tags || '').split(',').filter(Boolean);
-
-    let nameMatch = !q || name.includes(q);
-    let tagMatch = true;
-
-    if (activeTags.length > 0) {
-      tagMatch = activeTags.some(t => tags.includes(t.toLowerCase()));
-    }
-
-    el.style.display = (nameMatch && tagMatch) ? '' : 'none';
+    el.style.display = name.includes(q) ? '' : 'none';
   });
 }
 
@@ -1344,72 +1029,70 @@ function selectCharacter(name) {
   const data = state.characters[name];
   if (!data) return;
 
+  // Show chat list
   hideAllPanels();
-  document.getElementById('chat-list-panel').style.display = 'flex';
-  document.getElementById('chatListTitle').textContent = name;
+  const panel = document.getElementById('chat-list-panel');
+  panel.style.display = 'flex';
+
+  document.getElementById('chatListTitle').textContent = name + ' — 채팅 목록';
 
   const entries = document.getElementById('chatEntries');
-  const sorted = [...data.chats].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const sorted = [...data.chats].sort((a, b) => {
+    // Sort by date descending
+    return (b.date || '').localeCompare(a.date || '');
+  });
 
   entries.innerHTML = sorted.map((chat, idx) => {
-    const preview = chat.messages?.length > 1 ? chat.messages[1].mes?.substring(0, 100) : '';
+    const preview = chat.messages.length > 1 ? chat.messages[1].mes.substring(0, 100) : '';
     const dateStr = chat.date ? formatDate(chat.date) : '날짜 불명';
-    const realIdx = data.chats.indexOf(chat);
 
     return `
-      <div class="chat-entry" onclick="openChat('${escAttr(name)}', ${realIdx})">
-        <div class="chat-entry-icon">📖</div>
+      <div class="chat-entry" onclick="openChat('${escHtml(name)}', ${data.chats.indexOf(chat)})">
+        <div class="chat-entry-icon">💬</div>
         <div class="chat-entry-info">
           <div class="chat-entry-name">${escHtml(chat.name)}</div>
           <div class="chat-entry-date">${dateStr}</div>
           ${preview ? `<div class="chat-entry-preview">${escHtml(preview)}</div>` : ''}
         </div>
-        <span class="chat-entry-msgs">${chat.msgCount || chat.messages?.length || '?'}턴</span>
+        <span class="chat-entry-msgs">${chat.msgCount}턴</span>
       </div>
     `;
   }).join('');
 
+  // Close sidebar on mobile
   closeSidebarMobile();
 }
 
-async function openChat(charName, chatIdx) {
+function openChat(charName, chatIdx) {
   const data = state.characters[charName];
   if (!data || !data.chats[chatIdx]) return;
 
   state.currentChat = chatIdx;
   const chat = data.chats[chatIdx];
 
-  // 서버모드면 API에서 메시지 로드
-  if (chat.serverFile && (!chat.messages || chat.messages.length === 0)) {
-    try {
-      const res = await fetch(`/api/chat?char=${encodeURIComponent(charName)}&file=${encodeURIComponent(chat.file)}`);
-      if (res.ok) {
-        const cData = await res.json();
-        chat.messages = cData.messages;
-        chat.msgCount = cData.messages.length;
-        if (cData.avatar && !data.avatar) data.avatar = cData.avatar;
-      }
-    } catch (e) {
-      toast('채팅 로드 실패', 'error');
-      return;
-    }
-  }
-
   hideAllPanels();
-  document.getElementById('chat-viewer').style.display = 'flex';
+  const viewer = document.getElementById('chat-viewer');
+  viewer.style.display = 'flex';
+
   document.getElementById('chatViewerTitle').textContent = charName;
   document.getElementById('chatViewerDate').textContent = chat.date ? formatDate(chat.date) : '';
 
   const container = document.getElementById('chatMessages');
   container.innerHTML = '';
 
+  let totalTokens = 0;
   let userMsgs = 0, botMsgs = 0;
+
   for (const msg of chat.messages) {
-    container.appendChild(createMessageElement(msg, data.avatar));
+    const el = createMessageElement(msg, data.avatar);
+    container.appendChild(el);
     if (msg.is_user) userMsgs++; else botMsgs++;
   }
 
-  document.getElementById('chatStats').textContent = `총 ${chat.messages.length}턴 · 사용자 ${userMsgs} · AI ${botMsgs}`;
+  document.getElementById('chatStats').textContent =
+    `총 ${chat.messages.length}턴 · 사용자 ${userMsgs} · AI ${botMsgs}`;
+
+  // Scroll to top
   container.scrollTop = 0;
 }
 
@@ -1417,35 +1100,32 @@ function createMessageElement(msg, charAvatar) {
   const div = document.createElement('div');
   div.className = `message ${msg.is_user ? 'user' : 'bot'}`;
 
+  // Avatar wrapper
   const avatarWrapper = document.createElement('div');
   avatarWrapper.className = 'mes-avatar-wrapper';
 
+  const avatar = document.createElement('div');
   if (msg.is_user) {
-    const av = document.createElement('div');
-    av.className = 'mes-avatar';
-    av.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:0.9rem;';
-    av.textContent = '👤';
-    avatarWrapper.appendChild(av);
-  } else if (charAvatar) {
-    const img = document.createElement('img');
-    img.className = 'mes-avatar';
-    img.src = charAvatar;
-    img.alt = '';
-    img.onerror = function() {
-      this.style.display = 'none';
-      const fb = document.createElement('div');
-      fb.className = 'mes-avatar';
-      fb.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:0.9rem;';
-      fb.textContent = msg.name?.charAt(0) || '?';
-      this.parentNode.insertBefore(fb, this);
-    };
-    avatarWrapper.appendChild(img);
+    avatar.className = 'mes-avatar';
+    avatar.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--accent-overlay);';
+    avatar.textContent = '👤';
   } else {
-    const av = document.createElement('div');
-    av.className = 'mes-avatar';
-    av.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:0.9rem;';
-    av.textContent = msg.name?.charAt(0) || '?';
-    avatarWrapper.appendChild(av);
+    if (charAvatar) {
+      const img = document.createElement('img');
+      img.className = 'mes-avatar';
+      img.src = charAvatar;
+      img.alt = '';
+      avatar.appendChild(img);
+    } else {
+      avatar.className = 'mes-avatar';
+      avatar.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--accent-overlay);';
+      avatar.textContent = msg.name.charAt(0);
+    }
+  }
+  if (avatar.className === 'mes-avatar' || avatar.children.length > 0) {
+    avatarWrapper.appendChild(avatar.children.length > 0 ? avatar.children[0] || avatar : avatar);
+  } else {
+    avatarWrapper.appendChild(avatar);
   }
 
   const nameSpan = document.createElement('span');
@@ -1462,33 +1142,44 @@ function createMessageElement(msg, charAvatar) {
 
   div.appendChild(avatarWrapper);
 
+  // Check for images (extra.image or inline references)
   if (msg.extra && msg.extra.image) {
-    const imgC = document.createElement('div');
-    imgC.className = 'mes-image-container';
+    const imgContainer = document.createElement('div');
+    imgContainer.className = 'mes-image-container';
     const img = document.createElement('img');
     img.className = 'mes-image';
-    if (typeof msg.extra.image === 'string' && msg.extra.image.startsWith('data:')) {
+
+    // Check if image is a data URL or a filename
+    if (msg.extra.image.startsWith('data:')) {
       img.src = msg.extra.image;
     } else {
+      // Try to find in loaded images
       const found = findImage(msg.extra.image);
       if (found) img.src = found;
-      else { img.style.display = 'none'; }
+      else {
+        img.src = '';
+        img.alt = '이미지: ' + msg.extra.image;
+        img.style.display = 'none';
+      }
     }
+
     img.onclick = () => openLightbox(img.src);
-    imgC.appendChild(img);
-    div.appendChild(imgC);
+    imgContainer.appendChild(img);
+    div.appendChild(imgContainer);
   }
 
+  // Message body
   const body = document.createElement('div');
   body.className = 'mes-body';
   body.innerHTML = formatMessage(msg.mes);
   div.appendChild(body);
 
-  if (msg.swipes && msg.swipes > 1) {
-    const si = document.createElement('div');
-    si.className = 'mes-swipe-info';
-    si.textContent = `스와이프 ${(msg.swipe_id || 0) + 1}/${msg.swipes}`;
-    div.appendChild(si);
+  // Swipe info
+  if (msg.swipes && msg.swipes.length > 1) {
+    const swipeInfo = document.createElement('div');
+    swipeInfo.className = 'mes-swipe-info';
+    swipeInfo.textContent = `스와이프 ${(msg.swipe_id || 0) + 1}/${msg.swipes.length}`;
+    div.appendChild(swipeInfo);
   }
 
   return div;
@@ -1496,20 +1187,26 @@ function createMessageElement(msg, charAvatar) {
 
 function formatMessage(text) {
   if (!text) return '';
+
+  // Escape HTML first
   let html = escHtml(text);
 
-  // 추가 CSS 기반 태그 숨김 (정규식으로 못 잡은 것들)
-  html = html.replace(/&lt;(imageInfo|ImageInfo|IMAGEINFO)&gt;[\s\S]*?&lt;\/(imageInfo|ImageInfo|IMAGEINFO)&gt;/gi, '');
-  html = html.replace(/&lt;(pic|thinking|thought|cot|CoT|think|starter|OOC|extra_prompt)[\s\S]*?&lt;\/(pic|thinking|thought|cot|CoT|think|starter|OOC|extra_prompt)&gt;/gi, '');
-  html = html.replace(/&lt;pic\s+prompt=&quot;[^&]*&quot;\s*&gt;/gi, '');
-  html = html.replace(/&lt;\/pic&gt;/gi, '');
-
-  // Markdown
+  // Bold: **text**
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic: *text*
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  // Quote blocks: lines starting with >
   html = html.replace(/^&gt;(.+)$/gm, '<blockquote>$1</blockquote>');
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Code: `text`
+  html = html.replace(/`([^`]+)`/g, '<code style="background:var(--accent-overlay);padding:1px 4px;border-bottom:1.5px dashed var(--accent);font-size:0.92em;">$1</code>');
+
+  // Line breaks
   html = html.replace(/\n/g, '<br>');
+
+  // Paragraphs (double breaks)
   html = html.replace(/(<br>){2,}/g, '</p><p>');
   html = '<p>' + html + '</p>';
 
@@ -1517,72 +1214,50 @@ function formatMessage(text) {
 }
 
 function findImage(filename) {
-  if (!filename) return null;
+  // Direct match
   if (state.images[filename]) return state.images[filename];
+
+  // Try partial match
   const lower = filename.toLowerCase();
-  for (const [key, u] of Object.entries(state.images)) {
-    if (key.toLowerCase().includes(lower) || lower.includes(key.toLowerCase())) return u;
+  for (const [key, url] of Object.entries(state.images)) {
+    if (key.toLowerCase().includes(lower) || lower.includes(key.toLowerCase())) {
+      return url;
+    }
   }
   return null;
 }
 
 // ===================================================================
-// GALLERY (폴더별 분류)
+// GALLERY
 // ===================================================================
 function showGallery() {
   hideAllPanels();
-  document.getElementById('gallery-panel').style.display = 'flex';
+  const panel = document.getElementById('gallery-panel');
+  panel.style.display = 'flex';
+
   document.getElementById('galleryCount').textContent = `${state.imageList.length}개 이미지`;
 
-  const content = document.getElementById('galleryContent');
+  const grid = document.getElementById('galleryGrid');
 
   if (state.imageList.length === 0) {
-    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🖼</div><div>이미지가 없습니다</div></div>`;
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-state-icon">🖼</div>
+        <div>이미지가 없습니다</div>
+        <div style="font-size:0.78rem">이미지 파일(.png, .jpg, .webp)을 추가해 주세요</div>
+      </div>
+    `;
     return;
   }
 
-  // 폴더별 그룹화
-  const folders = {};
-  for (const img of state.imageList) {
-    const dir = img.dir || '기타';
-    if (!folders[dir]) folders[dir] = [];
-    folders[dir].push(img);
-  }
-
-  const folderNames = Object.keys(folders).sort((a, b) => {
-    if (a === '기타') return 1;
-    if (b === '기타') return -1;
-    return a.localeCompare(b);
-  });
-
-  content.innerHTML = folderNames.map(dir => {
-    const imgs = folders[dir];
-    return `
-      <div class="gallery-folder" id="folder-${escAttr(dir)}">
-        <div class="gallery-folder-header" onclick="toggleFolder(this)">
-          <span class="folder-icon">▾</span>
-          <span class="folder-name">📁 ${escHtml(dir)}</span>
-          <span class="folder-count">${imgs.length}개</span>
-        </div>
-        <div class="gallery-grid">
-          ${imgs.map(img => `
-            <div class="gallery-item" onclick="openLightbox('${img.url}')">
-              <img class="gallery-thumb" src="${img.url}" alt="" loading="lazy">
-              <div class="gallery-item-info">
-                <div class="gallery-item-name">${escHtml(img.name)}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
+  grid.innerHTML = state.imageList.map((img, idx) => `
+    <div class="gallery-item" onclick="openLightbox('${img.url}')">
+      <img class="gallery-thumb" src="${img.url}" alt="" loading="lazy">
+      <div class="gallery-item-info">
+        <div class="gallery-item-name">${escHtml(img.name)}</div>
       </div>
-    `;
-  }).join('');
-}
-
-function toggleFolder(header) {
-  const folder = header.parentElement;
-  folder.classList.toggle('collapsed');
-  header.classList.toggle('collapsed');
+    </div>
+  `).join('');
 }
 
 // ===================================================================
@@ -1599,17 +1274,22 @@ function goHome() {
   state.currentChar = null;
   state.currentChat = null;
   renderSidebar();
+
   hideAllPanels();
   if (Object.keys(state.characters).length === 0 && state.imageList.length === 0) {
     document.getElementById('welcome').style.display = '';
   } else {
+    // Show the first character's chats or welcome
     document.getElementById('welcome').style.display = '';
   }
 }
 
 function goBackToList() {
-  if (state.currentChar) selectCharacter(state.currentChar);
-  else goHome();
+  if (state.currentChar) {
+    selectCharacter(state.currentChar);
+  } else {
+    goHome();
+  }
 }
 
 // ===================================================================
@@ -1620,15 +1300,21 @@ function openLightbox(src) {
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightbox').classList.add('open');
 }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
 
 // ===================================================================
 // SIDEBAR MOBILE
 // ===================================================================
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('mobileOverlay').classList.toggle('show');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('mobileOverlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('show');
 }
+
 function closeSidebarMobile() {
   if (window.innerWidth <= 700) {
     document.getElementById('sidebar').classList.remove('open');
@@ -1641,19 +1327,24 @@ function closeSidebarMobile() {
 // ===================================================================
 function escHtml(str) {
   if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-}
-function escAttr(str) {
-  return escHtml(str).replace(/'/g, '&#039;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function formatDate(dateStr) {
   try {
     if (!dateStr) return '';
+    // SillyTavern date formats: "November 28, 2024 @12h 34m 56s" or ISO
     const d = new Date(dateStr.replace(/@/g, '').replace(/(\d+)h\s*(\d+)m\s*(\d+)s/, '$1:$2:$3'));
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
-  } catch { return dateStr; }
+  } catch {
+    return dateStr;
+  }
 }
 
 function formatTime(dateStr) {
@@ -1662,17 +1353,20 @@ function formatTime(dateStr) {
     const d = new Date(dateStr.replace(/@/g, '').replace(/(\d+)h\s*(\d+)m\s*(\d+)s/, '$1:$2:$3'));
     if (isNaN(d.getTime())) return '';
     return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-  } catch { return ''; }
+  } catch {
+    return '';
+  }
 }
 
 function updateStats() {
   const charCount = Object.keys(state.characters).length;
   const chatCount = Object.values(state.characters).reduce((s, c) => s + c.chats.length, 0);
-  const totalMsgs = Object.values(state.characters).reduce((s, c) =>
-    s + c.chats.reduce((ss, ch) => ss + (ch.msgCount || ch.messages?.length || 0), 0), 0);
+  const msgCount = Object.values(state.characters).reduce((s, c) =>
+    s + c.chats.reduce((ss, ch) => ss + ch.messages.length, 0), 0);
   const imgCount = state.imageList.length;
+
   document.getElementById('sidebarStats').innerHTML =
-    `${charCount}명 캐릭터 · ${chatCount}개 채팅<br>${totalMsgs.toLocaleString()}턴 · ${imgCount}개 이미지`;
+    `${charCount}명 캐릭터 · ${chatCount}개 채팅<br>${msgCount.toLocaleString()}턴 · ${imgCount}개 이미지`;
 }
 
 function toast(msg, type = 'success') {
@@ -1683,11 +1377,19 @@ function toast(msg, type = 'success') {
   setTimeout(() => el.remove(), 3500);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLightbox(); closeTagModal(); } });
+// Keyboard shortcut: Escape closes lightbox
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeLightbox();
+});
 
-// Click outside tag modal to close
-document.getElementById('tagModal').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('tagModal')) closeTagModal();
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  // Body drag & drop anywhere
+  document.body.addEventListener('dragover', (e) => e.preventDefault());
+  document.body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    handleDrop(e);
+  });
 });
 </script>
 </body>
