@@ -22,7 +22,7 @@ function findDataRoot() {
         for (const r of DATA_ROOTS) console.log(`    📂 ${r}`);
         return DATA_ROOTS;
     }
-    const found = [];
+    const found = ['/storage/0000-0000/Backup'];
 
     // ── 1순위: ~/storage 아래 모든 폴더에서 Backup 찾기 ──
     const storageBase = path.join(HOME, 'storage');
