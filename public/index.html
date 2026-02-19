@@ -347,6 +347,22 @@ document.addEventListener('DOMContentLoaded', async()=>{
   document.body.addEventListener('drop',e=>{e.preventDefault();handleDrop(e)});
   loadLocal();
 
+  // 이벤트 위임: 캐릭터 목록 클릭
+  document.getElementById('charList').addEventListener('click',e=>{
+    const li=e.target.closest('.char-item[data-char]');
+    if(li) selectCharacter(li.dataset.char);
+  });
+
+  // 이벤트 위임: 채팅 목록 클릭
+  document.getElementById('chatEntries').addEventListener('click',e=>{
+    // +태그 버튼
+    const tagBtn=e.target.closest('.chat-tag-btn[data-tag-char]');
+    if(tagBtn){e.stopPropagation();openTagModal(tagBtn.dataset.tagChar,tagBtn.dataset.tagFile);return;}
+    // 채팅 항목
+    const entry=e.target.closest('.chat-entry[data-char]');
+    if(entry) openChat(entry.dataset.char, parseInt(entry.dataset.ci));
+  });
+
   try {
     const r = await fetch('/api/scan');
     if (!r.ok) throw 0;
@@ -584,9 +600,9 @@ function renderSidebar(){
       :`<div class="char-avatar" style="display:flex;align-items:center;justify-content:center;font-size:.9rem">${n.charAt(0)}</div>`;
 
     return `<li class="char-item ${state.currentChar===n?'active':''}"
-      onclick="selectCharacter('${escA(n)}')"
-      data-name="${escA(n.toLowerCase())}"
-      data-tags="${escA(tags.join(',').toLowerCase())}">
+      data-char="${esc(n)}"
+      data-name="${esc(n.toLowerCase())}"
+      data-tags="${esc(tags.join(',').toLowerCase())}">
       ${av}
       <div class="char-info">
         <div class="char-name">${esc(n)}</div>
@@ -625,13 +641,13 @@ function selectCharacter(name){
     const ri=d.chats.indexOf(chat);
     const chatTags=chat.tags||state.tags[`${name}::${chat.file}`]||[];
     const tagHtml=chatTags.map(t=>`<span class="chat-entry-tag">${esc(t)}</span>`).join('');
-    return `<div class="chat-entry" onclick="openChat('${escA(name)}',${ri})">
+    return `<div class="chat-entry" data-char="${esc(name)}" data-ci="${ri}">
       <div class="chat-entry-icon">📖</div>
       <div class="chat-entry-info">
         <div class="chat-entry-name">${esc(chat.name)}</div>
         ${dateStr?`<div class="chat-entry-date">${dateStr}</div>`:''}
         ${preview?`<div class="chat-entry-preview">${esc(preview)}</div>`:''}
-        <div class="chat-entry-tags">${tagHtml}<span class="chat-tag-btn" onclick="event.stopPropagation();openTagModal('${escA(name)}','${escA(chat.file)}')">+태그</span></div>
+        <div class="chat-entry-tags">${tagHtml}<span class="chat-tag-btn" data-tag-char="${esc(name)}" data-tag-file="${esc(chat.file)}">+태그</span></div>
       </div>
     </div>`;
   }).join('');
