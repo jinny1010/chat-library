@@ -310,19 +310,27 @@ http.createServer(async (req, res) => {
             };
         });
 
-        // user/images/캐릭터명/ 이미지 수집
+        // user/images/캐릭터명/ 이미지 수집 (따옴표 변형도 시도)
         const charImages = {};
+        const cnVariants = [
+            cn,
+            cn.replace(/[\u2018\u2019]/g, "'"),
+            cn.replace(/'/g, "\u2018").replace(/'/g, "\u2019"),
+        ];
         for (const root of dataRoots) {
-            for (const sub of ['user/images', 'images']) {
-                const imgDir = path.join(root, sub, cn);
-                if (fs.existsSync(imgDir) && isDir(imgDir)) {
-                    for (const f of safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
-                        if (!charImages[f]) charImages[f] = `/api/image?path=${encodeURIComponent(path.join(imgDir, f))}`;
+            for (const sub of ['images', 'user/images']) {
+                for (const name of cnVariants) {
+                    const imgDir = path.join(root, sub, name);
+                    if (fs.existsSync(imgDir) && isDir(imgDir)) {
+                        for (const f of safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
+                            if (!charImages[f]) charImages[f] = `/api/image?path=${encodeURIComponent(path.join(imgDir, f))}`;
+                        }
                     }
                 }
             }
         }
 
+        console.log(`  📷 ${cn}: charImages=${Object.keys(charImages).length}개`);
         json(res, { char: cn, file: chat.file, name: chat.name, messages: msgs, charImages, avatar: cd.avatar ? `/api/image?path=${encodeURIComponent(cd.avatar)}` : null });
         return;
     }
@@ -351,15 +359,25 @@ http.createServer(async (req, res) => {
         if (!stPath) { res.writeHead(400); res.end(); return; }
         // /user/images/X/Y → images/X/Y 로 변환
         const relative = stPath.replace(/^\/?(user\/)?/, '');
-        for (const root of dataRoots) {
-            const fp = path.join(root, relative);
-            if (fs.existsSync(fp)) { serve(fp, res); return; }
+        // 따옴표 정규화 variants
+        const quoteVariants = [
+            relative,
+            relative.replace(/[\u2018\u2019]/g, "'"),   // smart→straight
+            relative.replace(/'/g, "\u2018").replace(/'/g, "\u2019"), // straight→smart
+        ];
+        for (const rel of quoteVariants) {
+            for (const root of dataRoots) {
+                const fp = path.join(root, rel);
+                if (fs.existsSync(fp)) { serve(fp, res); return; }
+            }
+            // user/ 접두사 붙인 버전도 시도
+            for (const root of dataRoots) {
+                const fp = path.join(root, 'user', rel);
+                if (fs.existsSync(fp)) { serve(fp, res); return; }
+            }
         }
-        // user/ 붙은 버전도 시도
-        for (const root of dataRoots) {
-            const fp = path.join(root, 'user', relative.replace(/^images\//, 'images/'));
-            if (fs.existsSync(fp)) { serve(fp, res); return; }
-        }
+        console.log(`  ⚠ st-image 404: ${stPath}`);
+        console.log(`    시도 경로: ${dataRoots.map(r => path.join(r, relative)).join(', ')}`);
         res.writeHead(404); res.end('Not Found'); return;
     }
 
