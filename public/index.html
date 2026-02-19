@@ -770,6 +770,18 @@ function fmtMsg(text){
   // system 태그 제거
   content = content.replace(/<s>[\s\S]*?<\/system>/gi, '');
 
+  // 마크다운 코드블록 안의 정보 제거 (Love Score, ImageInfo 등)
+  content = content.replace(/```[\s\S]*?```/g, '');
+
+  // <small> 태그 제거
+  content = content.replace(/<small>[\s\S]*?<\/small>/gi, '');
+
+  // 남은 ___ 구분선 제거
+  content = content.replace(/^___\s*$/gm, '');
+
+  // 빈 줄 정리
+  content = content.replace(/\n{3,}/g, '\n\n');
+
   // HTML div 블록 추출 → 보존 후 마크다운 처리
   const htmlBlocks = [];
   content = content.replace(/<div[\s\S]*?<\/div>/gi, (match) => {

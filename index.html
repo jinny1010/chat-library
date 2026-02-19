@@ -723,7 +723,8 @@ body {
         <div class="drop-zone-text">
           <strong>파일/폴더를 여기에 드래그</strong><br>
           또는 클릭해서 선택<br><br>
-          <span style="font-size:0.78rem">.jsonl (채팅) · .png .jpg .webp (이미지)</span>
+          <span style="font-size:0.78rem">.jsonl (채팅) · .png .jpg .webp (이미지)</span><br>
+          <button class="btn small" style="margin-top:8px" onclick="event.stopPropagation(); document.getElementById('folderInput').click();">📁 폴더 선택</button>
         </div>
       </div>
       <div class="hint-text" style="margin-top:12px; max-width:420px;">
@@ -764,8 +765,9 @@ body {
   </main>
 </div>
 
-<!-- Hidden file input -->
+<!-- Hidden file inputs -->
 <input type="file" id="fileInput" multiple accept=".jsonl,.json,.png,.jpg,.jpeg,.webp,.gif" style="display:none" onchange="handleFileSelect(event)">
+<input type="file" id="folderInput" webkitdirectory multiple style="display:none" onchange="handleFileSelect(event)">
 
 <!-- Lightbox -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
@@ -829,18 +831,36 @@ async function handleDrop(e) {
   processFiles(files);
 }
 
-function traverseEntry(entry, files) {
+function traverseEntry(entry, files, parentPath = '') {
   return new Promise((resolve) => {
     if (entry.isFile) {
-      entry.file(f => { files.push(f); resolve(); });
-    } else if (entry.isDirectory) {
-      const reader = entry.createReader();
-      reader.readEntries(async (entries) => {
-        for (const e of entries) {
-          await traverseEntry(e, files);
-        }
+      entry.file(f => {
+        // fullPath를 webkitRelativePath처럼 보존
+        const fullPath = parentPath ? parentPath + '/' + entry.name : entry.name;
+        Object.defineProperty(f, 'relativePath', { value: fullPath, writable: false });
+        files.push(f);
         resolve();
       });
+    } else if (entry.isDirectory) {
+      const dirPath = parentPath ? parentPath + '/' + entry.name : entry.name;
+      const reader = entry.createReader();
+      const allEntries = [];
+      // readEntries는 한 번에 최대 100개만 반환 → 반복 호출 필요
+      const readAll = () => {
+        reader.readEntries(async (entries) => {
+          if (entries.length === 0) {
+            // 모든 엔트리 읽기 완료
+            for (const e of allEntries) {
+              await traverseEntry(e, files, dirPath);
+            }
+            resolve();
+          } else {
+            allEntries.push(...entries);
+            readAll(); // 추가 엔트리 확인
+          }
+        });
+      };
+      readAll();
     } else {
       resolve();
     }
@@ -862,18 +882,41 @@ async function processFiles(files) {
       await parseChatFile(file);
       chatCount++;
     } else if (name.endsWith('.json') && !name.includes('settings') && !name.includes('theme')) {
-      // Possibly a chat file saved as .json
       await parseChatFile(file);
       chatCount++;
     } else if (/\.(png|jpg|jpeg|webp|gif)$/i.test(name)) {
       const url = URL.createObjectURL(file);
+
+      // 파일명으로 저장
       state.images[file.name] = url;
       state.imageList.push({ name: file.name, url });
 
-      // Check if it's a character avatar (matches char name pattern)
+      // webkitRelativePath가 있으면 경로 기반으로도 저장
+      // 예: "user/images/Jekyll And Hyde/file.png" → 여러 키로 등록
+      const relPath = file.webkitRelativePath || file.relativePath || '';
+      if (relPath) {
+        // 전체 상대 경로 저장
+        state.images[relPath] = url;
+        // /user/images/CharName/file.png 패턴 매칭용
+        // relPath: "Backup/user/images/Jekyll And Hyde/file.png"
+        // SillyTavern media URL: "/user/images/Jekyll And Hyde/file.png"
+        const userImagesIdx = relPath.indexOf('user/images/');
+        if (userImagesIdx >= 0) {
+          const stPath = '/' + relPath.substring(userImagesIdx);  // "/user/images/CharName/file.png"
+          state.images[stPath] = url;
+          state.images[relPath.substring(userImagesIdx)] = url;  // "user/images/CharName/file.png"
+        }
+        const imagesIdx = relPath.indexOf('images/');
+        if (imagesIdx >= 0) {
+          const imgPath = '/' + relPath.substring(imagesIdx);
+          state.images[imgPath] = url;
+          state.images[relPath.substring(imagesIdx)] = url;
+        }
+      }
+
+      // 캐릭터 아바타 매칭
       for (const charName of Object.keys(state.characters)) {
         if (file.name.toLowerCase().includes(charName.toLowerCase().replace(/[^a-z0-9가-힣]/gi, ''))) {
-          // Could be avatar — only set if none yet
           if (!state.characters[charName].avatar) {
             state.characters[charName].avatar = url;
           }
@@ -890,7 +933,6 @@ async function processFiles(files) {
     toast(`${chatCount}개 채팅 · ${imgCount}개 이미지 로드 완료`);
   }
 
-  // Hide welcome if we have data
   if (Object.keys(state.characters).length > 0) {
     document.getElementById('welcome').style.display = 'none';
   }
@@ -921,7 +963,7 @@ async function parseChatFile(file) {
       // Extract character name from file path pattern
       // SillyTavern saves chats like: charname/2024-1-1@12h34m56s.jsonl
       if (!charName) {
-        const pathMatch = file.webkitRelativePath || '';
+        const pathMatch = file.webkitRelativePath || file.relativePath || '';
         const parts = pathMatch.split('/');
         if (parts.length >= 2) {
           charName = parts[parts.length - 2];
@@ -1142,28 +1184,40 @@ function createMessageElement(msg, charAvatar) {
 
   div.appendChild(avatarWrapper);
 
-  // Check for images (extra.image or inline references)
-  if (msg.extra && msg.extra.image) {
+  // 이미지 처리: extra.media (SillyTavern 방식) + extra.image
+  const imgSources = [];
+  if (msg.extra) {
+    // 1) extra.media 배열 (SillyTavern 이미지) — 가장 우선
+    if (msg.extra.media && Array.isArray(msg.extra.media)) {
+      for (const m of msg.extra.media) {
+        if (m.type === 'image' && m.url) {
+          // m.url: "/user/images/Jekyll And Hyde/file.png"
+          const resolved = findImage(m.url) || findImage(m.url.split('/').pop());
+          if (resolved) imgSources.push(resolved);
+        }
+      }
+    }
+    // 2) extra.image 필드 (base64 또는 파일명) — media 없을 때 폴백
+    if (msg.extra.image && imgSources.length === 0) {
+      if (typeof msg.extra.image === 'string' && msg.extra.image.startsWith('data:')) {
+        imgSources.push(msg.extra.image);
+      } else {
+        const found = findImage(msg.extra.image);
+        if (found) imgSources.push(found);
+      }
+    }
+  }
+
+  // 이미지 표시 (본문 위)
+  for (const src of imgSources) {
     const imgContainer = document.createElement('div');
     imgContainer.className = 'mes-image-container';
     const img = document.createElement('img');
     img.className = 'mes-image';
-
-    // Check if image is a data URL or a filename
-    if (msg.extra.image.startsWith('data:')) {
-      img.src = msg.extra.image;
-    } else {
-      // Try to find in loaded images
-      const found = findImage(msg.extra.image);
-      if (found) img.src = found;
-      else {
-        img.src = '';
-        img.alt = '이미지: ' + msg.extra.image;
-        img.style.display = 'none';
-      }
-    }
-
+    img.src = src;
+    img.loading = 'lazy';
     img.onclick = () => openLightbox(img.src);
+    img.onerror = function() { this.parentElement.style.display = 'none'; };
     imgContainer.appendChild(img);
     div.appendChild(imgContainer);
   }
@@ -1187,9 +1241,49 @@ function createMessageElement(msg, charAvatar) {
 
 function formatMessage(text) {
   if (!text) return '';
+  let content = text;
 
-  // Escape HTML first
-  let html = escHtml(text);
+  // thought/cot/thinking 태그 제거
+  content = content.replace(/(?:```?\w*[\r\n]?)?<(thought|cot|thinking|CoT|think|starter)[\s\S]*?<\/(thought|cot|thinking|CoT|think|starter)>(?:[\r\n]?```?)?/gi, '');
+
+  // imageInfo 태그 제거
+  content = content.replace(/<[Ii][Mm][Aa][Gg][Ee][Ii][Nn][Ff][Oo]>[\s\S]*?<\/[Ii][Mm][Aa][Gg][Ee][Ii][Nn][Ff][Oo]>/g, '');
+
+  // pic 태그 제거 (다양한 형태)
+  content = content.replace(/<\/pic>/gi, '');
+  content = content.replace(/<pic\s+prompt="[^"]*"\s*\/?>[\s\S]*?(?:<\/pic>)?/gi, '');
+  content = content.replace(/<pic>[\s\S]*?<\/pic>/gi, '');
+  content = content.replace(/<pic\s+prompt="[^"]*"\s*\/?>\s*[^<]*/gi, '');
+
+  // infoblock 제거
+  content = content.replace(/<infoblock>[\s\S]*?<\/infoblock>/gi, '');
+
+  // 🥨 Sex Position 제거
+  content = content.replace(/🥨 Sex Position[\s\S]*?(?=```|$)/g, '');
+
+  // ➛ 제거
+  content = content.replace(/➛/g, '');
+
+  // OOC 제거
+  content = content.replace(/\[OOC:[\s\S]*?\]/gi, '');
+
+  // system 태그 제거
+  content = content.replace(/<s>[\s\S]*?<\/system>/gi, '');
+
+  // 마크다운 코드블록 안의 정보 제거 (Love Score 등)
+  content = content.replace(/```[\s\S]*?```/g, '');
+
+  // <small> 태그 제거
+  content = content.replace(/<small>[\s\S]*?<\/small>/gi, '');
+
+  // 남은 ___ 구분선 제거
+  content = content.replace(/^___\s*$/gm, '');
+
+  // 빈 줄 정리
+  content = content.replace(/\n{3,}/g, '\n\n').trim();
+
+  // Escape HTML
+  let html = escHtml(content);
 
   // Bold: **text**
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -1214,11 +1308,28 @@ function formatMessage(text) {
 }
 
 function findImage(filename) {
-  // Direct match
+  if (!filename) return null;
+
+  // 1) 정확히 일치
   if (state.images[filename]) return state.images[filename];
 
-  // Try partial match
+  // 2) 파일명만 추출해서 검색 (경로 포함된 경우)
+  const baseName = filename.split('/').pop();
+  if (baseName && state.images[baseName]) return state.images[baseName];
+
+  // 3) 경로 일부 매칭 (예: "/user/images/CharName/file.png")
   const lower = filename.toLowerCase();
+  for (const [key, url] of Object.entries(state.images)) {
+    const keyLower = key.toLowerCase();
+    // 정확한 파일명 매칭 (경로 끝부분)
+    if (keyLower.endsWith(lower) || lower.endsWith(keyLower)) return url;
+    // 파일명 부분 매칭
+    const keyBase = key.split('/').pop().toLowerCase();
+    const fnBase = lower.split('/').pop();
+    if (keyBase && fnBase && keyBase === fnBase) return url;
+  }
+
+  // 4) 부분 문자열 매칭 (최후 수단)
   for (const [key, url] of Object.entries(state.images)) {
     if (key.toLowerCase().includes(lower) || lower.includes(key.toLowerCase())) {
       return url;
