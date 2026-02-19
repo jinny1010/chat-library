@@ -338,6 +338,7 @@ const state = {
   characters:{}, images:{}, imageList:[], imageFolders:{},
   tags:{}, currentChar:null, currentChat:null, charImages:{},
   serverMode:false, activeTagFilters:[], libraryName:'채팅 도서관',
+  scrollPositions:{},  // { "charName::chatIdx": scrollTop }
 };
 
 // ── INIT ──
@@ -610,6 +611,7 @@ function filterCharacters(){
 }
 
 function selectCharacter(name){
+  saveScrollPos();
   state.currentChar=name;state.currentChat=null;renderSidebar();
   const d=state.characters[name];if(!d)return;
   hideAllPanels();
@@ -637,6 +639,9 @@ function selectCharacter(name){
 }
 
 async function openChat(cn,ci){
+  // 현재 채팅의 스크롤 위치 저장
+  saveScrollPos();
+  
   const d=state.characters[cn];if(!d||!d.chats[ci])return;
   state.currentChat=ci;const chat=d.chats[ci];
   let charImages = state.charImages || {};
@@ -656,7 +661,22 @@ async function openChat(cn,ci){
   let um=0,bm=0;
   for(const msg of chat.messages){c.appendChild(makeMsgEl(msg,d.avatar,charImages));if(msg.is_user)um++;else bm++;}
   document.getElementById('chatStats').textContent=`사용자 ${um} · AI ${bm}`;
-  c.scrollTop=0;
+  
+  // 저장된 스크롤 위치 복원 (없으면 맨 위)
+  const key=`${cn}::${ci}`;
+  const saved=state.scrollPositions[key];
+  if(saved!=null){
+    requestAnimationFrame(()=>{c.scrollTop=saved;});
+  } else {
+    c.scrollTop=0;
+  }
+}
+
+function saveScrollPos(){
+  if(state.currentChar!=null && state.currentChat!=null){
+    const c=document.getElementById('chatMessages');
+    if(c) state.scrollPositions[`${state.currentChar}::${state.currentChat}`]=c.scrollTop;
+  }
 }
 
 function makeMsgEl(msg,charAv,charImages){
@@ -870,11 +890,12 @@ function hideAllPanels(){
     document.getElementById(id).style.display='none';
 }
 function goHome(){
+  saveScrollPos();
   state.currentChar=null;state.currentChat=null;renderSidebar();hideAllPanels();
   if(Object.keys(state.characters).length>0)document.getElementById('home-view').style.display='flex';
   else document.getElementById('welcome').style.display='flex';
 }
-function goBackToList(){if(state.currentChar)selectCharacter(state.currentChar);else goHome();}
+function goBackToList(){saveScrollPos();if(state.currentChar)selectCharacter(state.currentChar);else goHome();}
 
 function openLightbox(src){if(!src)return;document.getElementById('lightboxImg').src=src;document.getElementById('lightbox').classList.add('open')}
 function closeLightbox(){document.getElementById('lightbox').classList.remove('open')}

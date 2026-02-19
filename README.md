@@ -13,7 +13,7 @@ cd ~/chat-library
 # 2. 파일 넣기 (server.js, public/index.html, package.json)
 
 # 3. 실행
-node server.js
+node library.js
 ```
 
 **외부 npm 패키지 필요 없음!** 순수 Node.js만 씀.
@@ -39,12 +39,12 @@ node server.js
 
 ### 방법 2: 경로 직접 지정
 ```bash
-CHAT_LIBRARY_PATH=/sdcard/ST-backup node server.js
+CHAT_LIBRARY_PATH=/sdcard/ST-backup node library.js
 ```
 
 ### 방법 3: SD카드에서 바로 읽기
 ```bash
-CHAT_LIBRARY_PATH=/storage/emulated/0/ST-backup node server.js
+CHAT_LIBRARY_PATH=/storage/emulated/0/ST-backup node library.js
 ```
 
 ## 자동 탐색 경로
@@ -73,5 +73,5 @@ SillyTavern이 채팅에 넣는 이미지는 `extra.image` 필드에 있음:
 
 ## 포트 변경
 ```bash
-PORT=3000 node server.js
+PORT=3000 node library.js
 ```
