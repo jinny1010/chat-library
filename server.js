@@ -275,12 +275,20 @@ http.createServer(async (req, res) => {
         const tags = loadJson(TAGS_FILE);
         const cl = {};
         for (const [n, d] of Object.entries(characters)) {
+            // Collect per-chat tags
+            const chatsWithTags = d.chats.map(c => {
+                const chatTagKey = `${n}::${c.file}`;
+                return { name: c.name, file: c.file, size: c.size, modified: c.modified, tags: tags[chatTagKey] || [] };
+            });
+            // Collect unique tags across all chats for this character (for character-level display)
+            const allCharTags = new Set();
+            for (const c of chatsWithTags) for (const t of c.tags) allCharTags.add(t);
             cl[n] = {
                 chatCount: d.chats.length,
                 imageCount: (d.images || []).length,
                 avatar: d.avatar ? `/api/image?path=${encodeURIComponent(d.avatar)}` : null,
-                tags: tags[n] || [],
-                chats: d.chats.map(c => ({ name: c.name, file: c.file, size: c.size, modified: c.modified })),
+                tags: [...allCharTags],
+                chats: chatsWithTags,
             };
         }
         json(res, { characters: cl, imageCount: allImages.length, roots: dataRoots });
@@ -293,13 +301,42 @@ http.createServer(async (req, res) => {
         const { characters } = scanAllData(dataRoots);
         const cd = characters[cn]; if (!cd) { json(res, { error: 'not found' }); return; }
         const chat = cd.chats.find(c => c.file === fn); if (!chat) { json(res, { error: 'no file' }); return; }
-        const msgs = parseChatFile(chat.path).map(m => ({
-            name: m.name || (m.is_user ? 'User' : cn), is_user: !!m.is_user,
-            mes: clean(m.mes || ''), send_date: m.send_date || m.create_date || '',
-            extra: m.extra ? { image: m.extra.image || null, title: m.extra.title || null } : null,
-            swipe_id: m.swipe_id, swipes: m.swipes ? m.swipes.length : 0,
-        }));
-        json(res, { char: cn, file: chat.file, name: chat.name, messages: msgs, avatar: cd.avatar ? `/api/image?path=${encodeURIComponent(cd.avatar)}` : null });
+        const msgs = parseChatFile(chat.path).map(m => {
+            const extra = {};
+            if (m.extra) {
+                if (m.extra.image) extra.image = m.extra.image;
+                if (m.extra.inline_image) extra.inline_image = m.extra.inline_image;
+                if (m.extra.title) extra.title = m.extra.title;
+                if (m.extra.append_title) extra.append_title = m.extra.append_title;
+            }
+            return {
+                name: m.name || (m.is_user ? 'User' : cn), is_user: !!m.is_user,
+                mes: clean(m.mes || ''), send_date: m.send_date || m.create_date || '',
+                extra: Object.keys(extra).length > 0 ? extra : null,
+                swipe_id: m.swipe_id, swipes: m.swipes ? m.swipes.length : 0,
+            };
+        });
+
+        // Collect available images from user/images/charName/ for this character
+        const charImages = {};
+        for (const root of dataRoots) {
+            // user/images/캐릭터명/
+            const uImgDir = path.join(root, 'user', 'images', cn);
+            if (fs.existsSync(uImgDir) && isDir(uImgDir)) {
+                for (const f of safeReaddir(uImgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
+                    charImages[f] = `/api/image?path=${encodeURIComponent(path.join(uImgDir, f))}`;
+                }
+            }
+            // images/캐릭터명/
+            const imgDir = path.join(root, 'images', cn);
+            if (fs.existsSync(imgDir) && isDir(imgDir)) {
+                for (const f of safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
+                    if (!charImages[f]) charImages[f] = `/api/image?path=${encodeURIComponent(path.join(imgDir, f))}`;
+                }
+            }
+        }
+
+        json(res, { char: cn, file: chat.file, name: chat.name, messages: msgs, charImages, avatar: cd.avatar ? `/api/image?path=${encodeURIComponent(cd.avatar)}` : null });
         return;
     }
 

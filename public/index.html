@@ -113,6 +113,11 @@ body{font-family:var(--font-ui);background:var(--bg);color:var(--text);line-heig
 .chat-entry-name{font-weight:600;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chat-entry-date{font-size:.68rem;color:var(--text-dim);margin-top:2px}
 .chat-entry-preview{font-size:.75rem;color:var(--text-sub);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:500px}
+.chat-entry-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px}
+.chat-entry-tag{font-size:.6rem;padding:1px 6px;border-radius:8px;background:var(--tag-bg);color:var(--tag-text)}
+.chat-tag-btn{font-size:.6rem;padding:1px 6px;border-radius:8px;background:transparent;border:1px dashed var(--border);color:var(--text-dim);cursor:pointer;opacity:0;transition:opacity .15s}
+.chat-entry:hover .chat-tag-btn{opacity:1}
+.chat-tag-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
 
 /* CHAT VIEWER */
 #chat-viewer{display:none;flex-direction:column;height:100%;overflow:hidden}
@@ -277,7 +282,6 @@ body{font-family:var(--font-ui);background:var(--bg);color:var(--text);line-heig
       <div class="cl-header">
         <button class="btn small" onclick="goHome()">← 서재</button>
         <h2 id="chatListTitle"></h2>
-        <button class="btn small ghost" onclick="openTagModal(state.currentChar)" title="태그 관리">🏷️</button>
       </div>
       <div class="chat-entries" id="chatEntries"></div>
     </div>
@@ -327,7 +331,7 @@ body{font-family:var(--font-ui);background:var(--bg);color:var(--text);line-heig
 <script>
 const state = {
   characters:{}, images:{}, imageList:[], imageFolders:{},
-  tags:{}, currentChar:null, currentChat:null,
+  tags:{}, currentChar:null, currentChat:null, charImages:{},
   serverMode:false, activeTagFilters:[], libraryName:'채팅 도서관',
 };
 
@@ -370,10 +374,14 @@ function loadServerData(data) {
   for (const[n,info] of Object.entries(data.characters)) {
     state.characters[n] = {
       avatar:info.avatar||null,
-      chats:info.chats.map(c=>({name:c.name,date:c.modified,file:c.file,msgCount:0,messages:[],serverFile:true})),
+      chats:info.chats.map(c=>({name:c.name,date:c.modified,file:c.file,msgCount:0,messages:[],serverFile:true,tags:c.tags||[]})),
       tags:info.tags||[],
     };
-    state.tags[n] = info.tags||[];
+    // per-chat tags: key = "charName::fileName"
+    for(const c of info.chats){
+      const key = `${n}::${c.file}`;
+      if(c.tags && c.tags.length > 0) state.tags[key] = c.tags;
+    }
   }
   buildTagFilter();
 }
@@ -412,11 +420,14 @@ function saveName(){
   if(state.serverMode) fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({libraryName:state.libraryName})}).catch(()=>{});
 }
 
-// ── TAG SYSTEM ──
-function openTagModal(cn){
-  if(!cn)return;
+// ── TAG SYSTEM (per-chat: key = "charName::fileName") ──
+function openTagModal(cn, chatFile){
+  if(!cn || !chatFile)return;
   state._tagChar=cn;
-  document.getElementById('tagModalTitle').textContent=cn+' — 태그';
+  state._tagFile=chatFile;
+  state._tagKey=`${cn}::${chatFile}`;
+  const displayName = chatFile.replace('.jsonl','');
+  document.getElementById('tagModalTitle').textContent=displayName+' — 태그';
   document.getElementById('tagInput').value='';
   renderModalTags();
   document.getElementById('tagModal').classList.add('open');
@@ -424,24 +435,38 @@ function openTagModal(cn){
 }
 function closeTagModal(){document.getElementById('tagModal').classList.remove('open')}
 function renderModalTags(){
-  const tags=state.tags[state._tagChar]||[];
+  const tags=state.tags[state._tagKey]||[];
   const c=document.getElementById('tagModalTags');
   c.innerHTML=tags.length===0?'<span style="font-size:.75rem;color:var(--text-dim)">태그 없음</span>':
     tags.map((t,i)=>`<span class="modal-tag">${esc(t)}<span class="rm" onclick="removeTag(${i})">×</span></span>`).join('');
 }
 function addTagFromInput(){
   const inp=document.getElementById('tagInput');
-  const tag=inp.value.trim(); if(!tag||!state._tagChar)return;
-  if(!state.tags[state._tagChar])state.tags[state._tagChar]=[];
-  if(!state.tags[state._tagChar].includes(tag))state.tags[state._tagChar].push(tag);
-  if(state.characters[state._tagChar])state.characters[state._tagChar].tags=state.tags[state._tagChar];
+  const tag=inp.value.trim(); if(!tag||!state._tagKey)return;
+  if(!state.tags[state._tagKey])state.tags[state._tagKey]=[];
+  if(!state.tags[state._tagKey].includes(tag))state.tags[state._tagKey].push(tag);
+  // 채팅 객체에도 태그 동기화
+  syncChatTags(state._tagChar, state._tagFile);
   inp.value=''; renderModalTags(); saveTags(); renderSidebar(); buildTagFilter();
+  // 채팅 목록 열려있으면 갱신
+  if(state.currentChar===state._tagChar) selectCharacter(state._tagChar);
 }
 function removeTag(i){
-  const cn=state._tagChar; if(!state.tags[cn])return;
-  state.tags[cn].splice(i,1);
-  if(state.characters[cn])state.characters[cn].tags=state.tags[cn];
+  const key=state._tagKey; if(!state.tags[key])return;
+  state.tags[key].splice(i,1);
+  if(state.tags[key].length===0) delete state.tags[key];
+  syncChatTags(state._tagChar, state._tagFile);
   renderModalTags(); saveTags(); renderSidebar(); buildTagFilter();
+  if(state.currentChar===state._tagChar) selectCharacter(state._tagChar);
+}
+function syncChatTags(cn, file){
+  const d=state.characters[cn]; if(!d)return;
+  const chat=d.chats.find(c=>c.file===file);
+  if(chat) chat.tags=state.tags[`${cn}::${file}`]||[];
+  // 캐릭터 레벨 태그도 갱신 (모든 채팅 태그 합집합)
+  const allTags=new Set();
+  for(const c of d.chats) for(const t of (c.tags||[])) allTags.add(t);
+  d.tags=[...allTags];
 }
 function saveTags(){
   localStorage.setItem('cl-tags',JSON.stringify(state.tags));
@@ -449,7 +474,7 @@ function saveTags(){
 }
 function buildTagFilter(){
   const all=new Set();
-  for(const ts of Object.values(state.tags)) for(const t of ts) all.add(t);
+  for(const[key,ts] of Object.entries(state.tags)) for(const t of ts) all.add(t);
   const sec=document.getElementById('tagFilterSec'), list=document.getElementById('tagFilterList');
   if(all.size===0){sec.style.display='none';return;}
   sec.style.display='';
@@ -537,7 +562,7 @@ async function parseChatFile(file){
       if(!chatDate&&(m.send_date||m.create_date))chatDate=m.send_date||m.create_date;
       messages.push({name:m.name||(m.is_user?'사용자':charName||'???'),is_user:!!m.is_user,
         mes:clientClean(m.mes||''),send_date:m.send_date||m.create_date||'',
-        extra:m.extra||{},swipe_id:m.swipe_id,swipes:m.swipes});
+        extra:m.extra?{image:m.extra.image||null,inline_image:m.extra.inline_image||null,title:m.extra.title||null}:{},swipe_id:m.swipe_id,swipes:m.swipes});
     }catch(e){}
   }
   if(!messages.length)return;
@@ -567,7 +592,7 @@ function renderSidebar(){
       <div class="char-info">
         <div class="char-name">${esc(n)}</div>
         <div class="char-meta">${d.chats.length}개 채팅</div>
-        <div class="char-tags">${tagHtml}<span class="char-tag-btn" onclick="event.stopPropagation();openTagModal('${escA(n)}')">+태그</span></div>
+        <div class="char-tags">${tagHtml}</div>
       </div>
     </li>`;
   }).join('');
@@ -581,6 +606,7 @@ function filterCharacters(){
     const name=el.dataset.name||'';
     const tags=(el.dataset.tags||'').split(',').filter(Boolean);
     let nm=!q||name.includes(q);
+    // 태그 필터: 캐릭터의 채팅 중 하나라도 해당 태그가 있으면 표시
     let tm=at.length===0||at.some(t=>tags.includes(t.toLowerCase()));
     el.style.display=(nm&&tm)?'':'none';
   });
@@ -598,12 +624,15 @@ function selectCharacter(name){
     const preview=chat.messages?.length>1?chat.messages[1].mes?.substring(0,100):'';
     const dateStr=chat.date?fmtDate(chat.date):'';
     const ri=d.chats.indexOf(chat);
+    const chatTags=chat.tags||state.tags[`${name}::${chat.file}`]||[];
+    const tagHtml=chatTags.map(t=>`<span class="chat-entry-tag">${esc(t)}</span>`).join('');
     return `<div class="chat-entry" onclick="openChat('${escA(name)}',${ri})">
       <div class="chat-entry-icon">📖</div>
       <div class="chat-entry-info">
         <div class="chat-entry-name">${esc(chat.name)}</div>
         ${dateStr?`<div class="chat-entry-date">${dateStr}</div>`:''}
         ${preview?`<div class="chat-entry-preview">${esc(preview)}</div>`:''}
+        <div class="chat-entry-tags">${tagHtml}<span class="chat-tag-btn" onclick="event.stopPropagation();openTagModal('${escA(name)}','${escA(chat.file)}')">+태그</span></div>
       </div>
     </div>`;
   }).join('');
@@ -613,11 +642,13 @@ function selectCharacter(name){
 async function openChat(cn,ci){
   const d=state.characters[cn];if(!d||!d.chats[ci])return;
   state.currentChat=ci;const chat=d.chats[ci];
+  let charImages = state.charImages || {};
   if(chat.serverFile&&(!chat.messages||!chat.messages.length)){
     try{
       const r=await(await fetch(`/api/chat?char=${encodeURIComponent(cn)}&file=${encodeURIComponent(chat.file)}`)).json();
       chat.messages=r.messages;chat.msgCount=r.messages.length;
       if(r.avatar&&!d.avatar)d.avatar=r.avatar;
+      if(r.charImages) { charImages = r.charImages; state.charImages = r.charImages; }
     }catch(e){toast('로드 실패','error');return;}
   }
   hideAllPanels();
@@ -626,12 +657,12 @@ async function openChat(cn,ci){
   document.getElementById('chatViewerDate').textContent=chat.date?fmtDate(chat.date):'';
   const c=document.getElementById('chatMessages');c.innerHTML='';
   let um=0,bm=0;
-  for(const msg of chat.messages){c.appendChild(makeMsgEl(msg,d.avatar));if(msg.is_user)um++;else bm++;}
+  for(const msg of chat.messages){c.appendChild(makeMsgEl(msg,d.avatar,charImages));if(msg.is_user)um++;else bm++;}
   document.getElementById('chatStats').textContent=`사용자 ${um} · AI ${bm}`;
   c.scrollTop=0;
 }
 
-function makeMsgEl(msg,charAv){
+function makeMsgEl(msg,charAv,charImages){
   const div=document.createElement('div');
   div.className=`message ${msg.is_user?'user':'bot'}`;
   const aw=document.createElement('div');aw.className='mes-avatar-wrapper';
@@ -654,21 +685,74 @@ function makeMsgEl(msg,charAv){
   if(msg.send_date){const ts=document.createElement('span');ts.className='mes-time';ts.textContent=fmtTime(msg.send_date);aw.appendChild(ts);}
   div.appendChild(aw);
 
-  if(msg.extra&&msg.extra.image){
-    const ic=document.createElement('div');ic.className='mes-image-container';
-    const img=document.createElement('img');img.className='mes-image';
-    if(typeof msg.extra.image==='string'&&msg.extra.image.startsWith('data:'))img.src=msg.extra.image;
-    else{const f=findImg(msg.extra.image);if(f)img.src=f;else img.style.display='none';}
-    img.onclick=()=>openLightbox(img.src);ic.appendChild(img);div.appendChild(ic);
+  // 메시지 본문 (이미지보다 먼저 표시)
+  const body=document.createElement('div');body.className='mes-body';body.innerHTML=fmtMsg(msg.mes);div.appendChild(body);
+
+  // 이미지 처리: extra.inline_image (base64), extra.image (파일명), charImages 매칭
+  const imgSources = [];
+  if(msg.extra){
+    // 1) inline_image (base64 데이터)
+    if(msg.extra.inline_image){
+      const src = msg.extra.inline_image.startsWith('data:') ? msg.extra.inline_image : 'data:image/png;base64,'+msg.extra.inline_image;
+      imgSources.push(src);
+    }
+    // 2) extra.image 필드
+    if(msg.extra.image && !msg.extra.inline_image){
+      if(typeof msg.extra.image==='string'&&msg.extra.image.startsWith('data:')){
+        imgSources.push(msg.extra.image);
+      } else {
+        // 파일명으로 charImages 또는 글로벌 이미지에서 찾기
+        const fn = msg.extra.image;
+        const found = findImgFromCharImages(fn, charImages) || findImg(fn);
+        if(found) imgSources.push(found);
+      }
+    }
   }
 
-  const body=document.createElement('div');body.className='mes-body';body.innerHTML=fmtMsg(msg.mes);div.appendChild(body);
+  // 3) 메시지 텍스트 내 이미지 경로 파싱 (SillyTavern 스타일)
+  // /user/images/CharName/file.png 패턴 또는 직접 파일명 참조
+  if(charImages && Object.keys(charImages).length > 0){
+    const mesText = msg.mes || '';
+    // src="..." 패턴에서 이미지 파일명 추출
+    const srcMatches = mesText.match(/src=["'](?:[^"']*\/)?([^"'\/]+\.(?:png|jpg|jpeg|webp|gif))["']/gi);
+    if(srcMatches){
+      for(const m of srcMatches){
+        const fnMatch = m.match(/([^"'\/]+\.(?:png|jpg|jpeg|webp|gif))/i);
+        if(fnMatch){
+          const fn = fnMatch[1];
+          const found = findImgFromCharImages(fn, charImages);
+          if(found && !imgSources.includes(found)) imgSources.push(found);
+        }
+      }
+    }
+  }
+
+  // 이미지 표시
+  for(const src of imgSources){
+    const ic=document.createElement('div');ic.className='mes-image-container';
+    const img=document.createElement('img');img.className='mes-image';img.src=src;img.loading='lazy';
+    img.onclick=()=>openLightbox(img.src);
+    img.onerror=function(){this.parentElement.style.display='none';};
+    ic.appendChild(img);div.appendChild(ic);
+  }
+
   if(msg.swipes&&(typeof msg.swipes==='number'?msg.swipes:msg.swipes?.length)>1){
     const si=document.createElement('div');si.className='mes-swipe-info';
     const total=typeof msg.swipes==='number'?msg.swipes:msg.swipes.length;
     si.textContent=`스와이프 ${(msg.swipe_id||0)+1}/${total}`;div.appendChild(si);
   }
   return div;
+}
+
+function findImgFromCharImages(fn, charImages){
+  if(!fn||!charImages)return null;
+  if(charImages[fn])return charImages[fn];
+  const l=fn.toLowerCase();
+  for(const[k,u]of Object.entries(charImages)){
+    if(k.toLowerCase()===l)return u;
+    if(k.toLowerCase().includes(l)||l.includes(k.toLowerCase()))return u;
+  }
+  return null;
 }
 
 function fmtMsg(text){
