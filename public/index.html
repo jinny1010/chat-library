@@ -142,6 +142,7 @@ body{font-family:var(--font-ui);background:var(--bg);color:var(--text);line-heig
 .mes-body p:last-child{margin-bottom:0}
 .mes-body em{color:var(--text-sub)}
 .mes-body strong{font-weight:700}
+.mes-body .dialogue{color:#4a6741;font-weight:500}
 .mes-body blockquote{background:var(--surface-alt);border-left:3px solid var(--accent);padding:6px 12px;margin:6px 0;border-radius:0 var(--radius) var(--radius) 0;color:var(--text-sub)}
 .mes-body code{background:var(--surface-alt);padding:1px 4px;border-radius:3px;font-size:.85em;border:1px solid var(--border)}
 .mes-image-container{padding:4px 16px 10px;display:flex;justify-content:center}
@@ -684,21 +685,22 @@ function makeMsgEl(msg,charAv,charImages){
   // 메시지 본문
   const body=document.createElement('div');body.className='mes-body';body.innerHTML=fmtMsg(msg.mes);div.appendChild(body);
 
-  // 이미지 처리: extra.media (SillyTavern 방식) → charImages 매칭
+  // 이미지 처리: extra.media (SillyTavern 방식)
   const imgSources = [];
   if(msg.extra){
-    // 1) extra.media 배열 (SillyTavern 이미지)
+    // 1) extra.media 배열 (SillyTavern 이미지) — 가장 우선
     if(msg.extra.media && Array.isArray(msg.extra.media)){
       for(const m of msg.extra.media){
         if(m.type==='image' && m.url){
-          // url: "/user/images/CharName/file.png" → 파일명 추출
           const fn = m.url.split('/').pop();
+          // charImages에서 먼저 찾고, 없으면 /api/st-image로 직접 요청
           const resolved = resolveCharImage(fn, charImages);
           if(resolved) imgSources.push(resolved);
+          else imgSources.push(`/api/st-image?path=${encodeURIComponent(m.url)}`);
         }
       }
     }
-    // 2) extra.image 필드 (base64 또는 파일명)
+    // 2) extra.image 필드 (base64 또는 파일명) — media 없을 때 폴백
     if(msg.extra.image && imgSources.length===0){
       if(typeof msg.extra.image==='string'&&msg.extra.image.startsWith('data:')){
         imgSources.push(msg.extra.image);
@@ -799,6 +801,9 @@ function fmtMsg(text){
   content = content.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   // *이탤릭*
   content = content.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');
+  // "큰따옴표 대사" 스타일링
+  content = content.replace(/&quot;([^&]+?)&quot;/g,'<span class="dialogue">\u201C$1\u201D</span>');
+  content = content.replace(/"([^"]+?)"/g,'<span class="dialogue">\u201C$1\u201D</span>');
   // > 인용
   content = content.replace(/^&gt;(.+)$/gm,'<blockquote>$1</blockquote>');
   // `코드`

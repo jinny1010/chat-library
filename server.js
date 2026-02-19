@@ -345,6 +345,24 @@ http.createServer(async (req, res) => {
         serve(rp, res); return;
     }
 
+    // SillyTavern 경로 해석: /user/images/CharName/file.png → Backup/images/CharName/file.png
+    if (pn === '/api/st-image') {
+        const stPath = p.query.path; // e.g. "/user/images/Adonis 'Baron' Broussard/file.png"
+        if (!stPath) { res.writeHead(400); res.end(); return; }
+        // /user/images/X/Y → images/X/Y 로 변환
+        const relative = stPath.replace(/^\/?(user\/)?/, '');
+        for (const root of dataRoots) {
+            const fp = path.join(root, relative);
+            if (fs.existsSync(fp)) { serve(fp, res); return; }
+        }
+        // user/ 붙은 버전도 시도
+        for (const root of dataRoots) {
+            const fp = path.join(root, 'user', relative.replace(/^images\//, 'images/'));
+            if (fs.existsSync(fp)) { serve(fp, res); return; }
+        }
+        res.writeHead(404); res.end('Not Found'); return;
+    }
+
     if (pn === '/api/tags') {
         if (req.method === 'GET') { json(res, loadJson(TAGS_FILE)); return; }
         if (req.method === 'POST') { try { saveJson(TAGS_FILE, JSON.parse(await body(req))); json(res, { ok: true }); } catch(e) { res.writeHead(400); json(res, { error: 'bad' }); } return; }
