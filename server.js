@@ -115,11 +115,17 @@ function scanAllData(roots) {
     const characters = {};
     const allImages = [];
     for (const root of roots) {
-        const chatsDir = sub(root, 'chats');
-        if (chatsDir) scanChatsDir(chatsDir, characters);
+        // chats 또는 chat 폴더 모두 지원
+        for (const chatDirName of ['chats', 'chat']) {
+            const chatsDir = sub(root, chatDirName);
+            if (chatsDir) scanChatsDir(chatsDir, characters);
+        }
 
-        const imagesDir = sub(root, 'images');
-        if (imagesDir) scanImagesDirByChar(imagesDir, allImages, characters);
+        // 이미지 소스들 — 여러 경로에서 탐색
+        for (const imgSub of ['images', 'user/images']) {
+            const imagesDir = sub(root, imgSub);
+            if (imagesDir) scanImagesDirByChar(imagesDir, allImages, characters);
+        }
 
         // 아바타 소스들
         for (const d of ['characters', 'thumbnails']) {
@@ -131,10 +137,11 @@ function scanAllData(roots) {
         if (uImgDir) scanImagesDir(uImgDir, allImages, characters);
 
         // chats/ 없이 직접 캐릭터 폴더가 있는 경우
-        if (!chatsDir) {
+        const hasChatsDir = ['chats', 'chat'].some(n => sub(root, n));
+        if (!hasChatsDir) {
             for (const name of safeReaddir(root)) {
                 const fp = path.join(root, name);
-                if (!isDir(fp) || ['images','thumbnails','characters','User Avatars'].includes(name)) continue;
+                if (!isDir(fp) || ['images','thumbnails','characters','User Avatars','user'].includes(name)) continue;
                 if (safeReaddir(fp).some(f => f.endsWith('.jsonl'))) {
                     scanChatsDir(root, characters);
                     break;
@@ -145,14 +152,16 @@ function scanAllData(roots) {
 
     // 2차 아바타: images/캐릭터명/ 첫 이미지
     for (const root of roots) {
-        const imagesDir = sub(root, 'images');
-        if (!imagesDir) continue;
-        for (const name of safeReaddir(imagesDir)) {
-            const fp = path.join(imagesDir, name);
-            if (!isDir(fp)) continue;
-            if (characters[name] && !characters[name].avatar) {
-                const imgs = safeReaddir(fp).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
-                if (imgs.length > 0) characters[name].avatar = path.join(fp, imgs[0]);
+        for (const imgSub of ['images', 'user/images']) {
+            const imagesDir = sub(root, imgSub);
+            if (!imagesDir) continue;
+            for (const name of safeReaddir(imagesDir)) {
+                const fp = path.join(imagesDir, name);
+                if (!isDir(fp)) continue;
+                if (characters[name] && !characters[name].avatar) {
+                    const imgs = safeReaddir(fp).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+                    if (imgs.length > 0) characters[name].avatar = path.join(fp, imgs[0]);
+                }
             }
         }
     }
@@ -255,7 +264,20 @@ function body(req) { return new Promise(r => { let b = ''; req.on('data', c => b
 // ── 메인 ──
 console.log('\n  📚 Chat Library\n  ─────────────────\n  경로 탐색 중...\n');
 const dataRoots = findDataRoot();
-console.log(`\n  총 ${dataRoots.length}개 경로 사용\n`);
+console.log(`\n  총 ${dataRoots.length}개 경로 사용`);
+
+// 시작 시 디버깅: 이미지 폴더 확인
+for (const root of dataRoots) {
+    console.log(`\n  📂 ${root}`);
+    for (const sub of ['chats', 'chat', 'images', 'user/images', 'characters', 'thumbnails']) {
+        const p = path.join(root, sub);
+        if (fs.existsSync(p)) {
+            const items = safeReaddir(p);
+            console.log(`    ✓ ${sub}/ (${items.length}개: ${items.slice(0, 5).join(', ')}${items.length > 5 ? '...' : ''})`);
+        }
+    }
+}
+console.log('');
 
 http.createServer(async (req, res) => {
     const p = url.parse(req.url, true), pn = p.pathname;
@@ -318,11 +340,13 @@ http.createServer(async (req, res) => {
             cn.replace(/'/g, "\u2018").replace(/'/g, "\u2019"),
         ];
         for (const root of dataRoots) {
-            for (const sub of ['images', 'user/images']) {
+            for (const imgSub of ['images', 'user/images']) {
                 for (const name of cnVariants) {
-                    const imgDir = path.join(root, sub, name);
+                    const imgDir = path.join(root, imgSub, name);
                     if (fs.existsSync(imgDir) && isDir(imgDir)) {
-                        for (const f of safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
+                        const imgFiles = safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
+                        console.log(`  📷 이미지 폴더 발견: ${imgDir} (${imgFiles.length}개)`);
+                        for (const f of imgFiles) {
                             if (!charImages[f]) charImages[f] = `/api/image?path=${encodeURIComponent(path.join(imgDir, f))}`;
                         }
                     }
@@ -330,7 +354,15 @@ http.createServer(async (req, res) => {
             }
         }
 
-        console.log(`  📷 ${cn}: charImages=${Object.keys(charImages).length}개`);
+        console.log(`  📷 ${cn}: charImages 총 ${Object.keys(charImages).length}개`);
+        if (Object.keys(charImages).length === 0) {
+            console.log(`  ⚠ 이미지 못 찾음! 시도한 경로:`);
+            for (const root of dataRoots) {
+                for (const imgSub of ['images', 'user/images']) {
+                    console.log(`    ${path.join(root, imgSub, cn)}`);
+                }
+            }
+        }
         json(res, { char: cn, file: chat.file, name: chat.name, messages: msgs, charImages, avatar: cd.avatar ? `/api/image?path=${encodeURIComponent(cd.avatar)}` : null });
         return;
     }
@@ -353,31 +385,47 @@ http.createServer(async (req, res) => {
         serve(rp, res); return;
     }
 
-    // SillyTavern 경로 해석: /user/images/CharName/file.png → Backup/images/CharName/file.png
+    // SillyTavern 경로 해석: /user/images/CharName/file.png
     if (pn === '/api/st-image') {
-        const stPath = p.query.path; // e.g. "/user/images/Adonis 'Baron' Broussard/file.png"
+        const stPath = p.query.path; // e.g. "/user/images/Jekyll And Hyde/file.png"
         if (!stPath) { res.writeHead(400); res.end(); return; }
-        // /user/images/X/Y → images/X/Y 로 변환
-        const relative = stPath.replace(/^\/?(user\/)?/, '');
+        
+        // 여러 변형 경로를 시도
+        const tryPaths = [];
+        
+        // 원본 경로 그대로 (앞의 / 제거)
+        const cleaned = stPath.replace(/^\//, '');
+        
         // 따옴표 정규화 variants
         const quoteVariants = [
-            relative,
-            relative.replace(/[\u2018\u2019]/g, "'"),   // smart→straight
-            relative.replace(/'/g, "\u2018").replace(/'/g, "\u2019"), // straight→smart
+            cleaned,
+            cleaned.replace(/[\u2018\u2019]/g, "'"),
+            cleaned.replace(/'/g, "\u2018").replace(/'/g, "\u2019"),
         ];
-        for (const rel of quoteVariants) {
+        
+        for (const variant of quoteVariants) {
             for (const root of dataRoots) {
-                const fp = path.join(root, rel);
-                if (fs.existsSync(fp)) { serve(fp, res); return; }
-            }
-            // user/ 접두사 붙인 버전도 시도
-            for (const root of dataRoots) {
-                const fp = path.join(root, 'user', rel);
-                if (fs.existsSync(fp)) { serve(fp, res); return; }
+                // 1) root/user/images/CharName/file.png (원본 그대로)
+                tryPaths.push(path.join(root, variant));
+                // 2) user/ 제거 → root/images/CharName/file.png
+                tryPaths.push(path.join(root, variant.replace(/^user\//, '')));
+                // 3) user/ 추가 → root/user/images/CharName/file.png
+                if (!variant.startsWith('user/')) {
+                    tryPaths.push(path.join(root, 'user', variant));
+                }
             }
         }
+        
+        for (const fp of tryPaths) {
+            if (fs.existsSync(fp) && !isDir(fp)) {
+                serve(fp, res);
+                return;
+            }
+        }
+        
         console.log(`  ⚠ st-image 404: ${stPath}`);
-        console.log(`    시도 경로: ${dataRoots.map(r => path.join(r, relative)).join(', ')}`);
+        console.log(`    시도 경로 (${tryPaths.length}개):`);
+        for (const tp of tryPaths.slice(0, 6)) console.log(`      ${tp}`);
         res.writeHead(404); res.end('Not Found'); return;
     }
 
