@@ -240,12 +240,6 @@ function parseChatFile(fp) {
 
 const CLEANUP = [
     { f: /(?:```?\w*[\r\n]?)?<(thought|cot|thinking|CoT|think|starter)[\s\S]*?<\/(thought|cot|thinking|CoT|think|starter)>(?:[\r\n]?```?)?/gi, r: '' },
-    { f: /<pic>[\s\S]*?<\/pic>/gi, r: '' },
-    { f: /<imageInfo>[\s\S]*?<\/imageInfo>/gi, r: '' },
-    { f: /<pic\s+prompt="[^"]*"\s*>/gi, r: '' },
-    { f: /<\/pic>/gi, r: '' },
-    { f: /➛/g, r: '' },
-    { f: /🥨 Sex Position[\s\S]*?(?=```)/g, r: '' },
     { f: /\[OOC:[\s\S]*?\]/gi, r: '' },
     { f: /<OOC>[\s\S]*?<\/OOC>/gi, r: '' },
     { f: /<extra_prompt>[\s\S]*?<\/extra_prompt>/gi, r: '' },
@@ -275,12 +269,10 @@ http.createServer(async (req, res) => {
         const tags = loadJson(TAGS_FILE);
         const cl = {};
         for (const [n, d] of Object.entries(characters)) {
-            // Collect per-chat tags
             const chatsWithTags = d.chats.map(c => {
                 const chatTagKey = `${n}::${c.file}`;
                 return { name: c.name, file: c.file, size: c.size, modified: c.modified, tags: tags[chatTagKey] || [] };
             });
-            // Collect unique tags across all chats for this character (for character-level display)
             const allCharTags = new Set();
             for (const c of chatsWithTags) for (const t of c.tags) allCharTags.add(t);
             cl[n] = {
@@ -307,7 +299,8 @@ http.createServer(async (req, res) => {
                 if (m.extra.image) extra.image = m.extra.image;
                 if (m.extra.inline_image) extra.inline_image = m.extra.inline_image;
                 if (m.extra.title) extra.title = m.extra.title;
-                if (m.extra.append_title) extra.append_title = m.extra.append_title;
+                // media 배열 전달 (SillyTavern 이미지 소스)
+                if (m.extra.media && Array.isArray(m.extra.media)) extra.media = m.extra.media;
             }
             return {
                 name: m.name || (m.is_user ? 'User' : cn), is_user: !!m.is_user,
@@ -317,21 +310,15 @@ http.createServer(async (req, res) => {
             };
         });
 
-        // Collect available images from user/images/charName/ for this character
+        // user/images/캐릭터명/ 이미지 수집
         const charImages = {};
         for (const root of dataRoots) {
-            // user/images/캐릭터명/
-            const uImgDir = path.join(root, 'user', 'images', cn);
-            if (fs.existsSync(uImgDir) && isDir(uImgDir)) {
-                for (const f of safeReaddir(uImgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
-                    charImages[f] = `/api/image?path=${encodeURIComponent(path.join(uImgDir, f))}`;
-                }
-            }
-            // images/캐릭터명/
-            const imgDir = path.join(root, 'images', cn);
-            if (fs.existsSync(imgDir) && isDir(imgDir)) {
-                for (const f of safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
-                    if (!charImages[f]) charImages[f] = `/api/image?path=${encodeURIComponent(path.join(imgDir, f))}`;
+            for (const sub of ['user/images', 'images']) {
+                const imgDir = path.join(root, sub, cn);
+                if (fs.existsSync(imgDir) && isDir(imgDir)) {
+                    for (const f of safeReaddir(imgDir).filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f))) {
+                        if (!charImages[f]) charImages[f] = `/api/image?path=${encodeURIComponent(path.join(imgDir, f))}`;
+                    }
                 }
             }
         }
