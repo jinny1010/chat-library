@@ -7,102 +7,33 @@ const url = require('url');
 const PORT = process.env.PORT || 7860;
 const DATA_ROOTS = (process.env.CHAT_LIBRARY_PATH || '').split(':').filter(Boolean);
 const HOME = process.env.HOME || '/data/data/com.termux/files/home';
-const TAGS_FILE = path.join(HOME, '.chat-library-tags.json');
-const SETTINGS_FILE = path.join(HOME, '.chat-library-settings.json');
+// 전용 데이터 폴더: 앱 폴더 안의 data/ 하나만 사용
+const DATA_DIR = path.join(__dirname, 'data');
+const TAGS_FILE = path.join(DATA_DIR, 'tags.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 function loadJson(f) { try { if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f,'utf-8')); } catch(e){} return {}; }
 function saveJson(f,d) { try { fs.writeFileSync(f,JSON.stringify(d,null,2),'utf-8'); } catch(e){} }
 
-// ── 경로 탐색 ──
-// 핵심: readdirSync + statSync 사용 (symlink 따라감)
-// Termux ~/storage/XXXX-XXXX 는 심볼릭 링크이므로 withFileTypes 쓰면 안됨
+// ── 경로 결정 ──
+// 자동 스토리지 탐색 안 함. 전용 폴더 하나만 본다.
+//   - 기본: 앱 폴더 안의 data/
+//   - CHAT_LIBRARY_PATH 환경변수를 주면 그 경로(들)로 덮어씀
 function findDataRoot() {
     if (DATA_ROOTS.length > 0) {
         console.log('  환경변수 경로 사용:');
         for (const r of DATA_ROOTS) console.log(`    📂 ${r}`);
         return DATA_ROOTS;
     }
-    const found = ['/storage/0000-0000/Backup'];
 
-    // ── 1순위: ~/storage 아래 모든 폴더에서 Backup 찾기 ──
-    const storageBase = path.join(HOME, 'storage');
-    if (fs.existsSync(storageBase)) {
-        try {
-            // withFileTypes 안 씀! statSync가 symlink를 따라감
-            const names = fs.readdirSync(storageBase);
-            for (const name of names) {
-                const fullPath = path.join(storageBase, name);
-                try {
-                    // statSync는 symlink를 자동으로 따라감 (lstatSync와 다름)
-                    const stat = fs.statSync(fullPath);
-                    if (!stat.isDirectory()) continue;
-
-                    for (const bn of ['Backup', 'backup', 'ST-backup', 'st-backup']) {
-                        const bd = path.join(fullPath, bn);
-                        if (fs.existsSync(bd) && !found.includes(bd)) {
-                            // chats 폴더가 있는지 확인
-                            const hasChats = fs.existsSync(path.join(bd, 'chats'));
-                            console.log(`  ✓ 발견: ${bd}${hasChats ? ' (chats/ 있음)' : ''}`);
-                            found.push(bd);
-                        }
-                    }
-
-                    // ~/storage/XXXX/chats 가 직접 있는 경우
-                    const directChats = path.join(fullPath, 'chats');
-                    if (fs.existsSync(directChats) && !found.includes(fullPath)) {
-                        console.log(`  ✓ 발견: ${fullPath} (직접 chats/)`);
-                        found.push(fullPath);
-                    }
-                } catch (e) {
-                    // 접근 권한 없는 폴더 무시
-                    console.log(`  ⚠ 접근 불가: ${fullPath} (${e.code || e.message})`);
-                }
-            }
-        } catch (e) {
-            console.log(`  ⚠ ~/storage 읽기 실패: ${e.message}`);
-        }
+    // 전용 폴더가 없으면 chats/ images/ 골격을 만들어 둔다
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(path.join(DATA_DIR, 'chats'), { recursive: true });
+        fs.mkdirSync(path.join(DATA_DIR, 'images'), { recursive: true });
+        console.log(`  📁 전용 폴더 생성: ${DATA_DIR}`);
     }
-
-    // ── 2순위: 명시적 ST-backup 경로들 ──
-    const stPaths = [
-        path.join(HOME, 'ST-backup'),
-        path.join(HOME, 'st-backup'),
-        '/storage/emulated/0/ST-backup',
-        '/storage/emulated/0/Download/ST-backup',
-        '/sdcard/ST-backup',
-    ];
-    for (const p of stPaths) {
-        if (!fs.existsSync(p)) continue;
-        const bs = path.join(p, 'Backup');
-        const target = fs.existsSync(bs) ? bs : p;
-        if (!found.includes(target)) {
-            console.log(`  ✓ 발견: ${target}`);
-            found.push(target);
-        }
-    }
-
-    // ── 3순위 (최하위): SillyTavern 실서버 — 위에서 아무것도 못 찾았을 때만 ──
-    if (found.length === 0) {
-        const stServer = [
-            path.join(HOME, 'SillyTavern/data/default-user'),
-            path.join(HOME, 'sillytavern/data/default-user'),
-        ];
-        for (const p of stServer) {
-            if (fs.existsSync(p) && !found.includes(p)) {
-                console.log(`  ✓ ST 서버 (백업 없어서 폴백): ${p}`);
-                found.push(p);
-            }
-        }
-    }
-
-    if (found.length === 0) {
-        const dp = path.join(HOME, 'ST-backup');
-        fs.mkdirSync(path.join(dp, 'chats'), { recursive: true });
-        fs.mkdirSync(path.join(dp, 'images'), { recursive: true });
-        console.log(`  📁 기본 폴더 생성: ${dp}`);
-        found.push(dp);
-    }
-    return found;
+    console.log(`  📂 전용 폴더 사용: ${DATA_DIR}`);
+    return [DATA_DIR];
 }
 
 // ── 유틸 ──
