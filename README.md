@@ -55,13 +55,13 @@ node library.js
 ```
 data/
 ├── chats/
-│   ├── Adonis 'Baron' Broussard/
-│   │   ├── 2024-12-01@10h30m.jsonl
-│   │   └── 2025-01-15@14h20m.jsonl
-│   └── Horangi/
+│   ├── 캐릭터 이름/
+│   │   ├── 2026-01-01@10h30m.jsonl
+│   │   └── 2026-02-15@14h20m.jsonl
+│   └── 다른 캐릭터/
 │       └── ...
 └── images/
-    ├── Adonis 'Baron' Broussard/   ← 캐릭터별 이미지 (NAI 생성물 등)
+    ├── 캐릭터 이름/   ← 캐릭터별 이미지 (NAI 생성물 등)
     │   └── xxx.png
     └── 기타이미지.png
 ```
@@ -89,6 +89,17 @@ CHAT_LIBRARY_PATH=/sdcard/ST-backup:/sdcard/Download/backup node library.js
 ```bash
 PORT=3000 node library.js
 ```
+
+### 접속 키 (공개 서버에 올릴 때)
+
+외부에서 접속 가능한 서버(클라우드, 터널 등)에 올린다면 접속 키를 걸어두는 걸 권장.
+
+```bash
+LIBRARY_KEY=원하는키 node library.js
+```
+
+- 켜두면 모든 요청에 키를 요구함. 최초 1회 `http://주소/?key=원하는키` 로 접속하면 쿠키에 저장돼서 이후엔 그냥 접속됨
+- 설정 안 하면(기본값) 키 없이 동작 — 폰/PC 로컬 전용이면 없어도 됨
 
 ## 화면 구성
 
