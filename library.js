@@ -5,6 +5,8 @@ const path = require('path');
 const url = require('url');
 
 const PORT = process.env.PORT || 7860;
+// 접속 키 (설정 시 모든 요청에 요구). 공개 서버에 올릴 때만 설정하면 됨.
+const LIBRARY_KEY = process.env.LIBRARY_KEY || '';
 const DATA_ROOTS = (process.env.CHAT_LIBRARY_PATH || '').split(':').filter(Boolean);
 const HOME = process.env.HOME || '/data/data/com.termux/files/home';
 // 전용 데이터 폴더: 앱 폴더 안의 data/ 하나만 사용
@@ -222,6 +224,22 @@ http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
+
+    // ── 접속 키 게이트 (LIBRARY_KEY 설정 시에만) ──
+    if (LIBRARY_KEY) {
+        const cookies = req.headers.cookie || '';
+        const hasCookie = cookies.split(';').some(c => c.trim() === `libkey=${LIBRARY_KEY}`);
+        if (!hasCookie) {
+            if (p.query.key === LIBRARY_KEY) {
+                // 최초 진입: ?key=XXX → 쿠키 심고 통과
+                res.setHeader('Set-Cookie', `libkey=${LIBRARY_KEY}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax`);
+            } else {
+                res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<div style="font-family:sans-serif;padding:2em">🔒 접속 키가 필요합니다.<br>주소 뒤에 <code>?key=접속키</code>를 붙여 접속하세요.</div>');
+                return;
+            }
+        }
+    }
 
     if (pn === '/api/scan') {
         const { characters, allImages } = scanAllData(dataRoots);
